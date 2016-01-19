@@ -28,7 +28,8 @@ data Rule a =
           concl :: Term a}
    deriving (Eq, Ord)
 
-type TermMap a = Map.Map VarId (Term a)
+data TermMap a =
+   TermMap (Map.Map VarId (Term a)) Integer
 
 class Subst key subst where
    fresh :: Integer -> subst -> ([key], subst)
@@ -36,10 +37,10 @@ class Subst key subst where
    lookup :: subst -> key -> Maybe (Term key)
    insert :: key -> Term key -> subst -> Maybe subst
 
-instance Subst VarId ((TermMap VarId), Integer) where
-   fresh n (m, i) = ([i .. (i + n)], (m, i + n))
-   empty = (Map.empty, 0)
-   lookup (m, _) k = Map.lookup k m
-   insert k t (m, i) = if k `Map.member` m
+instance Subst VarId (TermMap VarId) where
+   fresh n (TermMap m i) = ([i .. (i + n)], TermMap m (i + n))
+   empty = TermMap Map.empty 0
+   lookup (TermMap m _) k = Map.lookup k m
+   insert k t (TermMap m i) = if k `Map.member` m
                        then Nothing
-                       else Just ((Map.insert k t m), i)
+                       else Just $ TermMap (Map.insert k t m) i
