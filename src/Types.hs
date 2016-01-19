@@ -31,7 +31,7 @@ data Rule a =
 data TermMap a =
    TermMap (Map.Map VarId (Term a)) Integer
 
-class Subst key subst where
+class Subst key subst | subst -> key where
    fresh :: Integer -> subst -> ([key], subst)
    empty :: subst
    lookup :: subst -> key -> Maybe (Term key)
