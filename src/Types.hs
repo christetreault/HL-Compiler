@@ -7,6 +7,7 @@ module Types where
 
 import qualified Data.Map.Strict as Map
 import qualified Data.List as List
+import Control.Monad.State
 
 type VarId = Integer
 
