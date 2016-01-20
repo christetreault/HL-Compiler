@@ -45,3 +45,7 @@ instance Subst VarId (TermMap VarId) where
    insert k t (TermMap m i) = if k `Map.member` m
                        then Nothing
                        else Just $ TermMap (Map.insert k t m) i
+
+type SubstMonad a = StateT a
+
+runSubstMonad = runState
