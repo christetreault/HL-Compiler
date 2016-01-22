@@ -1,5 +1,5 @@
 open Core.Std
-
+(**)
 type empty
 
 type 'a term =
@@ -9,6 +9,7 @@ type 'a term =
 and var = int
 and ref_self = Cyc of ref_self term option ref
 with sexp, compare
+(**)
 
 let vars_to_uvars (type t) (type u) (on : int -> t term) =
   let rec vars_to_uvars : u term -> t term = function
@@ -22,13 +23,16 @@ let rec instantiate_term (lookup : 'a -> 'a term) = function
   | Var v -> Var v
   | UVar u -> lookup u
 
+(**)
 type 'a rule =
   { vars : int
   ; prems : 'a term list
   ; concl : 'a term
   }
 with sexp, compare
+(**)
 
+(**)
 module type SUBST =
 sig
   type key
@@ -38,7 +42,8 @@ sig
   val lookup : subst -> key -> key term option
   val inst : key -> key term -> subst -> subst option
 end
-
+(**)
+(**)
 module MapSubst : SUBST with type key = int =
 struct
   type key = int
@@ -53,7 +58,7 @@ struct
     with
     | Failure _ -> None
 end
-
+(**)
 module RefSubst : SUBST with type key = ref_self =
 struct
   type key = ref_self
@@ -76,6 +81,7 @@ struct
 
   exception UnifyFailure
 
+  (**)
   let rec fn_unify (cmp : 'a -> 'a -> int) (a : 'a term) (b : 'a term) (s : Subst.subst) : Subst.subst =
     match a , b with
     | App(f,xs) , App (g,ys) when f = g && Array.length xs = Array.length ys ->
@@ -90,7 +96,9 @@ struct
         | Some s -> s
       end
     | _ , _ -> raise UnifyFailure
+  (**)
 
+  (**)
   module SubstMonad =
   struct
     type 'a t = Subst.subst -> 'a * Subst.subst
@@ -104,6 +112,8 @@ struct
   include With_Subst
 
   type 'a with_subst = 'a SubstMonad.t
+  (**)
+
 
   let fresh num : uvar array with_subst =
     fun s -> Subst.fresh num s
@@ -380,7 +390,7 @@ struct
     | HL.FAIL -> LL.FAIL
     | HL.IDTAC -> LL.RET ()
     | HL.APPLY r ->
-      LL.(BIND (unify 
+      LL.(BIND (unify
     | HL.OR (l,r) -> assert false
     | _ -> assert false
 

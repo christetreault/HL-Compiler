@@ -29,23 +29,23 @@ data Rule a =
           concl :: Term a}
    deriving (Eq, Ord)
 
-data TermMap a =
-   TermMap (Map.Map VarId (Term a)) Integer
+data SubstEnv a =
+   SubstEnv (Map.Map VarId (Term a)) Integer
 
 class Subst key subst | subst -> key where
    fresh :: Integer -> subst -> ([key], subst)
    empty :: subst
    lookup :: subst -> key -> Maybe (Term key)
-   insert :: key -> Term key -> subst -> Maybe subst
+   inst :: key -> Term key -> subst -> Maybe subst
 
-instance Subst VarId (TermMap VarId) where
-   fresh n (TermMap m i) = ([i .. (i + n)], TermMap m (i + n))
-   empty = TermMap Map.empty 0
-   lookup (TermMap m _) k = Map.lookup k m
-   insert k t (TermMap m i) = if k `Map.member` m
-                       then Nothing
-                       else Just $ TermMap (Map.insert k t m) i
+instance Subst VarId (SubstEnv VarId) where
+   fresh n (SubstEnv m i) = ([i .. (i + n)], SubstEnv m (i + n))
+   empty = SubstEnv Map.empty 0
+   lookup (SubstEnv m _) k = Map.lookup k m
+   inst k t (SubstEnv m i) = if k `Map.member` m
+                             then Nothing
+                             else Just $ SubstEnv (Map.insert k t m) i
 
-type SubstMonad a = StateT a
+type WithSubst a = StateT a
 
-runSubstMonad = runState
+runWithSubst = runState
