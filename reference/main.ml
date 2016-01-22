@@ -11,13 +11,16 @@ and ref_self = Cyc of ref_self term option ref
 with sexp, compare
 (**)
 
+(**)
 let vars_to_uvars (type t) (type u) (on : int -> t term) =
   let rec vars_to_uvars : u term -> t term = function
       App (f,xs) -> App (f, Array.map ~f:vars_to_uvars xs)
     | Var v -> on v
     | UVar _ -> assert false
   in vars_to_uvars
+(**)
 
+(**)
 let rec instantiate_term (lookup : 'a -> 'a term) = function
     App (f,xs) -> App (f, Array.map ~f:(instantiate_term lookup) xs)
   | Var v -> Var v
@@ -114,34 +117,44 @@ struct
   type 'a with_subst = 'a SubstMonad.t
   (**)
 
-
+  (*!*)
   let fresh num : uvar array with_subst =
     fun s -> Subst.fresh num s
+  (*!*)
 
+  (*!*)
   let inst (u : uvar) (t : uvar term) : bool with_subst =
     fun s ->
       match Subst.inst u t s with
       | None -> false , s
       | Some ss -> true , ss
+  (*!*)
 
+  (**)
   let get : Subst.subst with_subst =
     fun x -> (x, x)
   let put (s : Subst.subst) : unit with_subst =
     fun _ -> ((), s)
+  (**)
 
+  (**)
   let unify (a : uvar term) (b : uvar term) : bool with_subst =
     With_Subst.(get >>= fun sub ->
                 try put (fn_unify compare a b sub) >>| (fun _ -> true)
                 with UnifyFailure -> return false)
+  (**)
+  (**)
   let instantiate (a : uvar term) : uvar term with_subst =
     With_Subst.(get >>= fun sub ->
                 return (instantiate_term (fun u -> match Subst.lookup sub u with
                     | None -> UVar u
                     | Some t -> t) a))
+  (**)
 
+  (**)
   let run_subst (type t) (tac : t with_subst) =
     fst (tac Subst.empty)
-
+  (**)
   let rec bind_all (k : uvar term -> uvar term list option with_subst) (acc : uvar term list) =
     function
     | [] -> With_Subst.return (Some [])

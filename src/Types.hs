@@ -12,7 +12,7 @@ import Control.Monad.State
 type VarId = Integer
 
 data Term a =
-   App Int [Term a]
+   App Integer [Term a]
    | Var VarId
    | UVar a
    deriving (Eq, Ord)
@@ -46,6 +46,6 @@ instance Subst VarId (SubstEnv VarId) where
                              then Nothing
                              else Just $ SubstEnv (Map.insert k t m) i
 
-type WithSubst a = StateT a
+type WithSubst a = StateT (SubstEnv a)
 
-runWithSubst = runState
+runWithSubst = fst $ runState empty
