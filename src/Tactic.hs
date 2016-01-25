@@ -2,13 +2,15 @@ module Tactic where
 
 import Types
 import Term
+import Util
 import Control.Monad
+import Control.Monad.State
 
 fnUnify :: (Subst a s, Eq a) => Term a -> Term a -> s -> Maybe s
 fnUnify (App f xs) (App g ys) s
    | f == g && length xs == length ys =
       foldM
-      (\acc (a, b) -> unify a b acc)
+      (\acc (a, b) -> fnUnify a b acc)
       s
       (zip xs ys)
 fnUnify (Var l) (Var r) s
@@ -19,19 +21,50 @@ fnUnify (UVar l) r s = inst l r s
 fnUnify l (UVar r) s = inst r l s
 fnUnify _ _ _ = Nothing
 
-unify :: Term UVar -> Term UVar -> WithSubst Bool
+unify :: (Eq a, MonadState s m, Subst a s)
+         => Term a
+         -> Term a
+         -> m Bool
 unify a b = do
-   state <- get
-   case (fnUnify a b state) of
-      | Nothing -> return False
-      | (Just new) -> do
+   st <- get
+   case (fnUnify a b st) of
+      Nothing -> return False
+      (Just new) -> do
          put new
          return True
 
-instantiate :: Term UVar -> WithSubst (UVar Term)
+instantiate :: (MonadState t m, Subst a t)
+               => Term a
+               -> m (Term a)
 instantiate a = do
-   state <- get
-   let instFn u = case (lookup state u) of
-          | Nothing -> UVar u
-          | Just t -> t
+   st <- get
+   let instFn u = case (lkup st u) of
+          Nothing -> UVar u
+          Just t -> t
    return $ instantiateTerm instFn a
+
+bindAll :: (Monad m)
+           => (t -> m (Maybe [a]))
+           -> [a]
+           -> [t]
+           -> m (Maybe [a])
+bindAll _ _ [] = return $ Just []
+bindAll k acc (gl:gls) = do
+   res <- k gl
+   case res of
+      Nothing -> return Nothing
+      (Just xs) -> bindAll k (acc ++ xs) gls
+
+bindEach :: (Monad m)
+            => [t -> m (Maybe [a])]
+            -> [a]
+            -> [t]
+            -> m (Maybe [a])
+bindEach [] acc [] = return (Just acc)
+bindEach [] _ (_:_) = impossible "LHS list empty, but RHS list not empty"
+bindEach (_:_) _ [] = impossible "RHS list not empty, but RHS list empty"
+bindEach (t:ts) acc (gl:gls) = do
+   tRes <- t gl
+   case tRes of
+      Nothing -> return Nothing
+      (Just ls) -> bindEach ts (acc ++ ls) gls

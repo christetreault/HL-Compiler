@@ -35,17 +35,17 @@ data SubstEnv a =
 class Subst key subst | subst -> key where
    fresh :: Integer -> subst -> ([key], subst)
    empty :: subst
-   lookup :: subst -> key -> Maybe (Term key)
+   lkup :: subst -> key -> Maybe (Term key)
    inst :: key -> Term key -> subst -> Maybe subst
 
 instance Subst VarId (SubstEnv VarId) where
    fresh n (SubstEnv m i) = ([i .. (i + n)], SubstEnv m (i + n))
    empty = SubstEnv Map.empty 0
-   lookup (SubstEnv m _) k = Map.lookup k m
+   lkup (SubstEnv m _) k = Map.lookup k m
    inst k t (SubstEnv m i) = if k `Map.member` m
                              then Nothing
                              else Just $ SubstEnv (Map.insert k t m) i
 
-type WithSubst a = StateT (SubstEnv a)
+type WithSubst = StateT
 
-runWithSubst = fst $ runState empty
+runWithSubst m = fst $ runState m empty

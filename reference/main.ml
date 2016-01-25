@@ -155,13 +155,17 @@ struct
   let run_subst (type t) (tac : t with_subst) =
     fst (tac Subst.empty)
   (**)
+
+  (**)
   let rec bind_all (k : uvar term -> uvar term list option with_subst) (acc : uvar term list) =
     function
     | [] -> With_Subst.return (Some [])
     | gl :: gls ->
       With_Subst.(k gl >>= function None -> return None
                                   | Some xs -> bind_all k (acc @ xs) gls)
+  (**)
 
+  (**)
   let bind_each (type t)
   : (t term -> t term list option with_subst) list -> t term list ->
     t term list -> t term list option with_subst =
@@ -176,7 +180,7 @@ struct
                           function None -> return None
                                  | Some ls -> fix (ls @ acc) gls
     in bind_each
-
+         (**)
 end
 
 module HL =
@@ -505,7 +509,7 @@ let time str x =
 
 let do_n n t () =
   let problem = DemoMap.(even (make_n 10000)) in
-  for _ = 0 to n do
+  for i = 0 to n do
     match CompileMap.TacMonad.run_subst (t problem) with
     | None -> ()
     | Some _ -> ()
@@ -513,7 +517,7 @@ let do_n n t () =
 
 let do_n_ref n t () =
   let problem = DemoRef.(even (make_n 10000)) in
-  for _ = 0 to n do
+  for i = 0 to n do
     match CompileRef.TacMonad.run_subst (t problem) with
     | None -> ()
     | Some _ -> ()
@@ -529,7 +533,7 @@ let () =
   time "ref_tac_opt" (do_n_ref n rtac_opt) ;
   time "compiled" (fun x ->
       let problem = DemoMap.(even (make_n 10000)) in
-      for _ = 0 to n do
+      for i = 0 to n do
         match CompileMap.TacMonad.run_subst (if compiled problem then
                                                CompileMap.TacMonad.return (Some [])
                                              else CompileMap.TacMonad.return None) with
