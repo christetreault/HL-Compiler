@@ -184,7 +184,8 @@ struct
 end
 
 module HL =
-struct
+  struct
+    (**)
   type ('a,'b) hl =
     | APPLY of 'b rule
     | CALL of 'a
@@ -200,7 +201,8 @@ struct
     | IDTACK
     | FAILK
   with sexp, compare
-
+  (**)
+  (**)
   let map_hl (type v) (type t) (type u) (f : t -> u) : (t,v) hl -> (u,v) hl =
     let rec map_hl =
       function OR (l,r) -> OR (map_hl l, map_hl r)
@@ -217,7 +219,7 @@ struct
              | IDTACK -> IDTACK
              | FAILK -> FAILK
     in map_hl
-
+  (**)
   type 'a tac = (string, 'a) hl
   type 'a tacC = (string, 'a) hc
 
