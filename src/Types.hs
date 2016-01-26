@@ -15,7 +15,7 @@ data Term a =
    App Integer [Term a]
    | Var VarId
    | UVar a
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Show)
 
 {-
 data RefSelf a =
@@ -27,7 +27,7 @@ data Rule a =
    Rule { vars :: VarId,
           prems :: [Term a],
           concl :: Term a}
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Show)
 
 data SubstEnv a =
    SubstEnv (Map.Map VarId (Term a)) Integer
