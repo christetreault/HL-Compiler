@@ -44,7 +44,7 @@ instantiate a = do
    return $ instantiateTerm instFn a
 
 bindAll :: (Monad m)
-           => (t -> m (Maybe [a]))
+           => (t -> m (Maybe [a])) -- TODO: This seems wonky
            -> [a]
            -> [t]
            -> m (Maybe [a])
@@ -55,7 +55,7 @@ bindAll k acc (gl:gls) = do
       Nothing -> return Nothing
       (Just xs) -> bindAll k (acc ++ xs) gls
 
-bindEach :: (Monad m)
+bindEach :: (Monad m) -- TODO: This seems wonky
             => [t -> m (Maybe [a])]
             -> [a]
             -> [t]
