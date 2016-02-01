@@ -45,7 +45,3 @@ instance Subst VarId (SubstEnv VarId) where
    inst k t (SubstEnv m i) = if k `Map.member` m
                              then Nothing
                              else Just $ SubstEnv (Map.insert k t m) i
-
-type WithSubst = StateT
-
-runWithSubst m = fst $ runState m empty

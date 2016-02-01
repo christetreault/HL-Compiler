@@ -43,28 +43,13 @@ instantiate a = do
           Just t -> t
    return $ instantiateTerm instFn a
 
-bindAll :: (Monad m)
-           => (t -> m (Maybe [a])) -- TODO: This seems wonky
-           -> [a]
-           -> [t]
-           -> m (Maybe [a])
-bindAll _ _ [] = return $ Just []
-bindAll k acc (gl:gls) = do
-   res <- k gl
-   case res of
-      Nothing -> return Nothing
-      (Just xs) -> bindAll k (acc ++ xs) gls
+bindAll :: State t (Maybe [a]) -> [t] -> State t (Maybe [a])
+bindAll m states = return $ mconcat $ map (evalState m) states
 
-bindEach :: (Monad m) -- TODO: This seems wonky
-            => [t -> m (Maybe [a])]
-            -> [a]
-            -> [t]
-            -> m (Maybe [a])
-bindEach [] acc [] = return (Just acc)
-bindEach [] _ (_:_) = impossible "LHS list empty, but RHS list not empty"
-bindEach (_:_) _ [] = impossible "RHS list not empty, but RHS list empty"
-bindEach (t:ts) acc (gl:gls) = do
-   tRes <- t gl
-   case tRes of
-      Nothing -> return Nothing
-      (Just ls) -> bindEach ts (acc ++ ls) gls
+bindEach :: [State t (Maybe [a])] -> [t] -> State t (Maybe [a])
+bindEach ms states
+   | length ms /= length states = impossible "ms Length /= states length!"
+   | otherwise = return $ mconcat $  map mapper pairs
+      where
+         pairs = zip ms states
+         mapper = uncurry evalState
