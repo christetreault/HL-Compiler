@@ -43,6 +43,9 @@ instantiate a = do
           Just t -> t
    return $ instantiateTerm instFn a
 
+
+
+{-
 bindAll :: State t (Maybe [a]) -> [t] -> State t (Maybe [a])
 bindAll m states = return $ mconcat $ map (evalState m) states
 
@@ -53,3 +56,4 @@ bindEach ms states
       where
          pairs = zip ms states
          mapper = uncurry evalState
+-}

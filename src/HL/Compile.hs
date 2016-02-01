@@ -11,6 +11,7 @@ import qualified Data.Map.Strict as Map
    this when I know it all works.
 -}
 
+
 compile :: (MonadState s m, Subst k s)
            => HLProg k
            -> m (Maybe [Term k])
@@ -18,12 +19,17 @@ compile prg = undefined
 
 
 
-compileHl :: (MonadState s m, Subst k s)
+compileHl :: (Subst k s)
              => HL k Integer
-             -> m (Maybe [Term k])
+             -> State s (Maybe [Term k])
 compileHl hl = undefined
 
-compileHc :: (MonadState s m, Subst k s)
+compileHc :: (Subst k s)
              => HC k Integer
-             -> m (Maybe [Term k])
-compileHc (HCAll hc) = undefined
+             -> State s (Maybe [Term k])
+compileHc (HCAll hl) = compileHl hl
+compileHc (HCEach hls) = do
+   res <- sequence $ map compileHl hls
+   return $ mconcat res
+compileHc HCIdTacK = return $ Just []
+compileHc HCFailK = return Nothing
