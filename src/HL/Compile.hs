@@ -3,6 +3,7 @@ module HL.Compile where
 import Types
 import Tactic
 import HL
+import Term
 import Util
 import Control.Monad.State
 import qualified Data.Map as Map
@@ -23,6 +24,7 @@ compile prg = undefined
 compileHl :: Term VarId
              -> HL VarId Integer
              -> State (SubstEnv VarId) (Maybe [Term VarId])
+compileHl t (HLApply r) = undefined
 compileHl t (HLCall name) = do
    env <- get
    let sub = lkup env name

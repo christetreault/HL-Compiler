@@ -24,9 +24,9 @@ data RefSelf a =
 -}
 
 data Rule a =
-   Rule { vars :: VarId,
-          prems :: [Term a],
-          concl :: Term a}
+   Rule { ruleVars :: VarId,
+          rulePrems :: [Term a],
+          ruleConcl :: Term a}
    deriving (Eq, Ord, Show)
 
 data SubstEnv a =
