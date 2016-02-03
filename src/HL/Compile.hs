@@ -21,43 +21,53 @@ compile prg = undefined
 
 
 
-compileHl :: Term VarId
-             -> HL VarId Integer
+compileHl :: HL VarId Integer
+             -> Term VarId
              -> State (SubstEnv VarId) (Maybe [Term VarId])
-compileHl t (HLApply r) = undefined
-compileHl t (HLCall name) = do
+compileHl (HLApply r) t = do
+   env <- get
+   let (l, x) = fresh (ruleVars r) env
+   let v2u = varsToUVars (\y -> UVar (l !! fromIntegral y))
+   let concl' = v2u $ ruleConcl r
+   res <- unify concl' t
+   if res
+      then
+      return $ Just $ map v2u $ rulePrems r
+      else
+      return Nothing
+compileHl (HLCall name) t = do
    env <- get
    let sub = lkup env name
    case sub of
       Nothing -> impossible ("HLCall: " ++ show name ++ " undefined!")
       Just t' -> return $ Just [t']
-compileHl _ HLFail = return Nothing
-compileHl t HLIdTac = return $ Just [t]
-compileHl t (HLOr lhs rhs) = do
-   lhs' <- compileHl t lhs
+compileHl HLFail _ = return Nothing
+compileHl HLIdTac t = return $ Just [t]
+compileHl (HLOr lhs rhs) t = do
+   lhs' <- compileHl lhs t
    case lhs' of
-      Nothing -> compileHl t rhs
+      Nothing -> compileHl rhs t
       lhs'' -> return lhs''
-compileHl t (HLSeq lhs rhss) = do
-   lhs' <- compileHl t lhs
+compileHl (HLSeq lhs rhss) t = do
+   lhs' <- compileHl lhs t
    case lhs' of
       Nothing -> return Nothing
       Just gls -> compileHc gls rhss
-compileHl t (HLAssert _ hl) = compileHl t hl
-compileHl t (HLK hc) = compileHc [t] hc
+compileHl (HLAssert _ hl) t = compileHl hl t
+compileHl (HLK hc) t = compileHc [t] hc
 
 
-compileHc :: [Term VarId]
-             -> HC VarId Integer
+compileHc :: HC VarId Integer
+             -> [Term VarId]
              -> State (SubstEnv VarId) (Maybe [Term VarId])
-compileHc ts (HCAll hl) = do
-   ms <- sequence $ compileHl <$> ts <*> pure hl
+compileHc (HCAll hl) ts = do
+   ms <- sequence $ compileHl <$> pure hl <*> ts
    return $ mconcat ms
-compileHc ts (HCEach hls)
+compileHc (HCEach hls) ts
    | length ts /= length hls = impossible "HCEach: |terms| ≠ |HLs|!"
    | otherwise = do
-      let pairs = zip ts hls
+      let pairs = zip hls ts
       ms <- sequence $ map (uncurry compileHl) pairs
       return $ mconcat ms
-compileHc ts HCIdTacK = return $ Just ts
-compileHc _ HCFailK = return Nothing
+compileHc HCIdTacK ts = return $ Just ts
+compileHc HCFailK _ = return Nothing
