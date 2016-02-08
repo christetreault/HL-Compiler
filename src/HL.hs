@@ -105,3 +105,8 @@ makeProg fns entry = do
                  $ fmap sequence
                  $ fmap (fmap (`Map.lookup` names)) interm
          return $ Map.fromList $ zip lhss rhss
+
+hlFirst :: [HL a b] -> HL a b
+hlFirst [] = HLFail
+hlFirst [t] = t
+hlFirst (t:ts) = HLOr t $ hlFirst ts
