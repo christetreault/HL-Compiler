@@ -96,7 +96,7 @@ makeProg fns entry = do
                      progFns = functions }
    where
       alist = reverse $ Map.assocs fns
-      nexts = [1 .. (fromIntegral $ length alist)]
+      nexts = [0 .. (fromIntegral $ length alist)]
       names = Map.fromList $ zip (map fst alist) nexts
       fns' = do
          let interm = map snd alist
