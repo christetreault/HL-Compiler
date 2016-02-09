@@ -13,70 +13,89 @@ import qualified Data.Map as Map
    this when I know it all works.
 -}
 
+type CompileState = (Map.Map VarId (Maybe [Term VarId]), SubstEnv VarId)
 
 compile :: HLProg VarId
            -> Term VarId
-           -> State (SubstEnv VarId) (Maybe [Term VarId])
-compile prg = do
-   compiled <- return $ fmap compileHl $ progFns prg
+           -> Maybe [Term VarId]
+compile prg t = do
+   let compiled = sequence $ Map.mapWithKey compileHl $ progFns prg
    case (progEntry prg `Map.lookup` progNames prg) of
       Nothing -> impossible ("compile: "
                              ++ progEntry prg
                              ++ " not defined!")
-      Just e -> case (e `Map.lookup` compiled) of
+      Just e -> case (e `Map.lookup` (compiled t)) of
          Nothing -> impossible ("compile: "
                                 ++ progEntry prg
                                 ++ " not compiled!")
-         Just compiledFn -> compiledFn
+         Just compiledFn -> evalState compiledFn (Map.empty, empty)
 
-compileHl :: HL VarId Integer
+compileHl :: VarId
+             -> HL VarId Integer
              -> Term VarId
-             -> State (SubstEnv VarId) (Maybe [Term VarId])
-compileHl (HLApply r) t = do
-   env <- get
+             -> State CompileState (Maybe [Term VarId])
+compileHl k (HLApply r) t = do
+   (fs, env) <- get
    let (l, _) = fresh (ruleVars r) env
    let v2u = varsToUVars (\y -> UVar (l !! fromIntegral y))
    let concl' = v2u $ ruleConcl r
-   res <- unify concl' t
-   if res
-      then
-      return $ Just $ map v2u $ rulePrems r
-      else do
-         put env        -- Should be superfluous, but doing anyways in case the
-         return Nothing -- behavior of unify changes
-compileHl (HLCall name) t = do
-   env <- get
-   let sub = lkup env name
-   case sub of
+   let res = fnUnify concl' t env
+   case res of
+      Nothing -> do
+         updateCSt k Nothing fs env
+      Just env' -> do
+         let ts = Just $ map v2u $ rulePrems r
+         updateCSt k ts fs env'
+compileHl k (HLCall name) t = do
+   (fs, env) <- get
+   let rhs = Map.lookup name fs
+   case rhs of
       Nothing -> impossible ("HLCall: " ++ show name ++ " undefined!")
-      Just t' -> return $ Just [t']
-compileHl HLFail _ = return Nothing
-compileHl HLIdTac t = return $ Just [t]
-compileHl (HLOr lhs rhs) t = do
-   lhs' <- compileHl lhs t
+      Just ts -> return ts
+compileHl k HLFail _ = addCSt k Nothing
+compileHl k HLIdTac t = addCSt k $ Just [t]
+compileHl k (HLOr lhs rhs) t = do
+   lhs' <- compileHl k lhs t
    case lhs' of
-      Nothing -> compileHl rhs t
-      lhs'' -> return lhs''
-compileHl (HLSeq lhs rhss) t = do
-   lhs' <- compileHl lhs t
+      Nothing -> compileHl k rhs t
+      lhs'' -> addCSt k lhs''
+compileHl k (HLSeq lhs rhss) t = do
+   lhs' <- compileHl k lhs t
    case lhs' of
-      Nothing -> return Nothing
-      Just gls -> compileHc rhss gls
-compileHl (HLAssert _ hl) t = compileHl hl t
-compileHl (HLK hc) t = compileHc hc [t]
+      Nothing -> addCSt k Nothing
+      Just gls -> compileHc k rhss gls
+compileHl k (HLAssert _ hl) t = compileHl k hl t
+compileHl k (HLK hc) t = compileHc k hc [t]
 
 
-compileHc :: HC VarId Integer
+compileHc :: VarId
+             -> HC VarId Integer
              -> [Term VarId]
-             -> State (SubstEnv VarId) (Maybe [Term VarId])
-compileHc (HCAll hl) ts = do
-   ms <- sequence $ compileHl <$> pure hl <*> ts
-   return $ mconcat ms
-compileHc (HCEach hls) ts
+             -> State CompileState (Maybe [Term VarId])
+compileHc k (HCAll hl) ts = do
+   ms <- sequence $ (compileHl k) <$> pure hl <*> ts
+   addCSt k $ mconcat ms
+compileHc k (HCEach hls) ts
    | length ts /= length hls = impossible "HCEach: |terms| ≠ |HLs|!"
    | otherwise = do
       let pairs = zip hls ts
-      ms <- sequence $ map (uncurry compileHl) pairs
-      return $ mconcat ms
-compileHc HCIdTacK ts = return $ Just ts
-compileHc HCFailK _ = return Nothing
+      ms <- sequence $ map (uncurry (compileHl k)) pairs
+      addCSt k $ mconcat ms
+compileHc k HCIdTacK ts = addCSt k $ Just ts
+compileHc k HCFailK _ = addCSt k Nothing
+
+updateCSt :: VarId
+             -> Maybe [Term VarId]
+             -> Map.Map VarId (Maybe [Term VarId])
+             -> SubstEnv VarId
+             -> State CompileState (Maybe [Term VarId])
+updateCSt k ts fs env = do
+   let curr = case (Map.lookup k fs) of
+          Nothing -> ts
+          Just ts' -> ts `mappend` ts'
+   put (Map.insert k curr fs, env)
+   return ts
+
+addCSt k ts = do
+   (fs, env) <- get
+   updateCSt k ts fs env

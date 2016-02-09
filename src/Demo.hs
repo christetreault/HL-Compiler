@@ -3,6 +3,7 @@ module Demo where
 import HL
 import Types
 import qualified Data.Map as Map
+import Data.Maybe (fromJust)
 
 mkEven t = App 0 [t]
 mkOdd t = App 1 [t]
@@ -26,7 +27,7 @@ ruleO = Rule { ruleVars = 0,
                rulePrems = [],
                ruleConcl = mkEven mkZero }
 
-evenOddTac = makeProg fnMap entryPoint
+evenOddTac = fromJust $ makeProg fnMap entryPoint
    where
       entryPoint = "evenOdd"
       tacs = [HLApply ruleEO, HLApply ruleOE, HLApply ruleO]
@@ -35,7 +36,7 @@ evenOddTac = makeProg fnMap entryPoint
                    HLSeq (hlFirst tacs)
                          (HCAll $ HLCall entryPoint))]
 
-evenOddTacOpt = makeProg fnMap entryPoint
+evenOddTacOpt = fromJust $ makeProg fnMap entryPoint
    where
       entryPoint = "evenOdd"
       fnOdd = "odd"
