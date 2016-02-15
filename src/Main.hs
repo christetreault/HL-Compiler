@@ -15,9 +15,12 @@ main = do
    return ()
 
 tac :: Term VarId -> Maybe [Term VarId]
-tac = compile evenOddTac
+tac t = evalStateT (action t) empty
+   where
+      action :: Term VarId -> StateT (SubstEnv VarId) Maybe [Term VarId]
+      action = compile evenOddTac
 
-tacOpt = compile evenOddTacOpt
+{-tacOpt = compile evenOddTacOpt-}
 
 doN :: Int
        -> (Term VarId -> Maybe [Term VarId])

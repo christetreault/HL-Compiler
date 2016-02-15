@@ -11,15 +11,12 @@ import HL
 import Term
 import Util
 import Control.Monad.State
-import Control.Monad.Except
 import qualified Data.Map as Map
 
 {-
    For now, implementing without memoization. Will revisit
    this when I know it all works.
 -}
-
-type CompileState = (Map.Map VarId (Maybe [Term VarId]), SubstEnv VarId)
 
 -- The executable type of a tactic (Tactic) and a tactic continuation (TacticK)
 -- In both cases, [m] should be a Monad with
@@ -42,7 +39,8 @@ compile prg =
       env = fmap (\t -> compileHl t env) $ progFns prg
 
 -- Compile a tactic given the environment of defined tactics
-compileHl :: (Ord f, Eq v, Show f, Show v, Subst v s, Monad m, MonadState s m, MonadPlus m) =>
+compileHl :: (Ord f, Eq v, Show f, Show v, Subst v s,
+              Monad m, MonadState s m, MonadPlus m) =>
              HL v f -> Map.Map f (Tactic m v) -> Tactic m v
 compileHl (HLApply r) _ = \gl -> do
    s <- get
@@ -57,7 +55,7 @@ compileHl (HLCall name) env =
     case name `Map.lookup` env of
       Nothing -> impossible ("HLCall: " ++ show name ++ " undefined!")
       Just tac -> tac
-compileHl HLFail _ = \gl -> mzero
+compileHl HLFail _ = \_ -> mzero
 compileHl HLIdTac _ = \gl -> return [gl]
 compileHl (HLOr lhs rhs) env =
     let lhsT = compileHl lhs env in
@@ -73,7 +71,8 @@ compileHl (HLK hc) env =
     \gl -> hcT [gl]
 
 -- Compile a tactic continuation given the environment of defined tactics
-compileHc :: (Ord f, Eq v, Show f, Show v, Subst v s, Monad m, MonadState s m, MonadPlus m) =>
+compileHc :: (Ord f, Eq v, Show f, Show v, Subst v s,
+              Monad m, MonadState s m, MonadPlus m) =>
              HC v f -> Map.Map f (Tactic m v) -> TacticK m v
 compileHc (HCAll hl) env =
     let hlT = compileHl hl env in
@@ -92,19 +91,3 @@ compileHc (HCEach hls) env =
                 [] pairs
 compileHc HCIdTacK _ = \gls -> return gls
 compileHc HCFailK _ = \_ -> mzero
-
--- updateCSt :: VarId
---              -> Maybe [Term VarId]
---              -> Map.Map VarId (Maybe [Term VarId])
---              -> SubstEnv VarId
---              -> State CompileState (Maybe [Term VarId])
--- updateCSt k ts fs env = do
---    let curr = case (Map.lookup k fs) of
---           Nothing -> ts
---           Just ts' -> ts `mappend` ts'
---    put (Map.insert k curr fs, env)
---    return ts
-
--- addCSt k ts = do
---    (fs, env) <- get
---    updateCSt k ts fs env
