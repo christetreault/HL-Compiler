@@ -21,9 +21,14 @@ import qualified Data.Map as Map
 
 type CompileState = (Map.Map VarId (Maybe [Term VarId]), SubstEnv VarId)
 
+-- The executable type of a tactic (Tactic) and a tactic continuation (TacticK)
+-- In both cases, [m] should be a Monad with
+-- 1) A State of [s] such that [Subst s v]
+-- 2) A MonadPlus (used for errors)
 type Tactic m v = Term v -> m [Term v]
 type TacticK m v = [Term v] -> m [Term v]
 
+-- Compile a program
 compile :: (Subst VarId s, Monad m, MonadState s m, MonadPlus m) =>
            HLProg VarId -> Tactic m VarId
 compile prg =
@@ -36,6 +41,7 @@ compile prg =
     where
       env = fmap (\t -> compileHl t env) $ progFns prg
 
+-- Compile a tactic given the environment of defined tactics
 compileHl :: (Ord f, Eq v, Show f, Show v, Subst v s, Monad m, MonadState s m, MonadPlus m) =>
              HL v f -> Map.Map f (Tactic m v) -> Tactic m v
 compileHl (HLApply r) _ = \gl -> do
@@ -66,6 +72,7 @@ compileHl (HLK hc) env =
     let hcT = compileHc hc env in
     \gl -> hcT [gl]
 
+-- Compile a tactic continuation given the environment of defined tactics
 compileHc :: (Ord f, Eq v, Show f, Show v, Subst v s, Monad m, MonadState s m, MonadPlus m) =>
              HC v f -> Map.Map f (Tactic m v) -> TacticK m v
 compileHc (HCAll hl) env =
