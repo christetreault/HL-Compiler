@@ -26,7 +26,7 @@ type Tactic m v = Term v -> m [Term v]
 type TacticK m v = [Term v] -> m [Term v]
 
 -- Compile a program
-compile :: (Subst VarId s, Monad m, MonadState s m, MonadPlus m) =>
+compile :: (Subst VarId s, Monad m, MonadState s m, MonadPlus m, Show s) =>
            HLProg VarId -> Tactic m VarId
 compile prg =
     case progEntry prg `Map.lookup` progNames prg of
@@ -40,7 +40,7 @@ compile prg =
 
 -- Compile a tactic given the environment of defined tactics
 compileHl :: (Ord f, Eq v, Show f, Show v, Subst v s,
-              Monad m, MonadState s m, MonadPlus m) =>
+              Monad m, MonadState s m, MonadPlus m, Show s) =>
              HL v f -> Map.Map f (Tactic m v) -> Tactic m v
 compileHl (HLApply r) _ = \gl -> do
    s <- get
@@ -49,8 +49,9 @@ compileHl (HLApply r) _ = \gl -> do
    let concl = v2u $ ruleConcl r
    case fnUnify concl gl s' of
      Nothing -> mzero
-     Just s'' -> do put s''
-                    return $ fmap v2u $ rulePrems r
+     Just s'' -> do
+        put s''
+        sequence $ fmap (\a -> instantiate $ v2u a) (rulePrems r)
 compileHl (HLCall name) env =
     case name `Map.lookup` env of
       Nothing -> impossible ("HLCall: " ++ show name ++ " undefined!")
@@ -62,9 +63,9 @@ compileHl (HLOr lhs rhs) env =
     let rhsT = compileHl rhs env in
     \gl -> mplus (lhsT gl) (rhsT gl)
 compileHl (HLSeq lhs rhs) env =
-    let lhsT = compileHl lhs env in
-    let rhsT = compileHc rhs env in
-    \gl -> lhsT gl >>= rhsT
+   let lhsT = compileHl lhs env in
+   let rhsT = compileHc rhs env in
+   \gl -> lhsT gl >>= rhsT
 compileHl (HLAssert _ hl) env = compileHl hl env
 compileHl (HLK hc) env =
     let hcT = compileHc hc env in
@@ -72,7 +73,7 @@ compileHl (HLK hc) env =
 
 -- Compile a tactic continuation given the environment of defined tactics
 compileHc :: (Ord f, Eq v, Show f, Show v, Subst v s,
-              Monad m, MonadState s m, MonadPlus m) =>
+              Monad m, MonadState s m, MonadPlus m, Show s) =>
              HC v f -> Map.Map f (Tactic m v) -> TacticK m v
 compileHc (HCAll hl) env =
     let hlT = compileHl hl env in

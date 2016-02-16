@@ -1,7 +1,7 @@
 module HL where
 
 import Types
-import qualified Data.Map.Strict as Map
+import qualified Data.Map as Map
 
 data HC b a =
    HCAll (HL b a)

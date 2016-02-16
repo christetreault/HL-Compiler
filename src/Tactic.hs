@@ -6,7 +6,7 @@ import Util
 import Control.Monad
 import Control.Monad.State
 
-fnUnify :: (Subst a s, Eq a) => Term a -> Term a -> s -> Maybe s
+fnUnify :: (Subst a s, Eq a, Show a, Show s) => Term a -> Term a -> s -> Maybe s
 fnUnify (App f xs) (App g ys) s
    | f == g && length xs == length ys =
       foldM
@@ -21,7 +21,7 @@ fnUnify (UVar l) r s = inst l r s
 fnUnify l (UVar r) s = inst r l s
 fnUnify _ _ _ = Nothing
 
-unify :: (Eq a, MonadState s m, Subst a s)
+unify :: (Eq a, MonadState s m, Subst a s, Show a, Show s)
          => Term a
          -> Term a
          -> m Bool
