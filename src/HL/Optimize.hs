@@ -1,4 +1,4 @@
-module Optimize where
+module HL.Optimize where
 
 import HL
 import Types

@@ -1,6 +1,7 @@
 module Main where
 
 import HL.Compile
+import HL.Optimize
 import HL
 import Demo
 import Types
@@ -9,18 +10,21 @@ import Control.Monad.State
 main :: IO ()
 main = do
    let n = 1
-   putStrLn $ show (evenOddTac :: HLProg VarId)
-   let compiled = doN n tac
+   let compiled = doN n (tac_evenOddOpt)
    putStrLn $ show compiled
    return ()
 
-tac :: Term VarId -> Maybe [Term VarId]
-tac t = evalStateT (action t) empty
+tac_evenOdd t = tac t evenOddTac
+tac_evenOddMan t = tac t evenOddTacOpt
+tac_evenOddOpt t = tac t $ normalizeProg evenOddTac
+
+tac :: Term VarId -> HLProg VarId ->Maybe [Term VarId]
+tac t p = evalStateT (action t) empty
    where
       action :: Term VarId -> StateT (SubstEnv VarId) Maybe [Term VarId]
-      action = compile evenOddTac
+      action = compile p
 
-{-tacOpt = compile evenOddTacOpt-}
+
 
 doN :: Int
        -> (Term VarId -> Maybe [Term VarId])
