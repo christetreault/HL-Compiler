@@ -5,9 +5,10 @@
 
 module Types where
 
-import qualified Data.Map.Strict as Map
+import qualified Data.Map as Map
 import qualified Data.List as List
 import Control.Monad.State
+import Debug.Trace
 
 type VarId = Integer
 
@@ -31,6 +32,7 @@ data Rule a =
 
 data SubstEnv a =
    SubstEnv (Map.Map VarId (Term a)) Integer
+   deriving (Show)
 
 class Subst key subst | subst -> key where
    fresh :: Integer -> subst -> ([key], subst)
