@@ -1,7 +1,7 @@
 module Demo where
 
 import HL
-import Types
+import Term
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 

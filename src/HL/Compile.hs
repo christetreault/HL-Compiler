@@ -6,7 +6,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module HL.Compile where
 
-import Types
 import Tactic
 import HL
 import Term

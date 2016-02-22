@@ -4,7 +4,7 @@ import HL.Compile
 import HL.Optimize
 import HL
 import Demo
-import Types
+import Term
 import Control.Monad.State
 
 main :: IO ()

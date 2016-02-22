@@ -1,6 +1,6 @@
 module HL where
 
-import Types
+import Term
 import qualified Data.Map as Map
 
 data HC v b a =

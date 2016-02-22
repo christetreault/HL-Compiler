@@ -1,7 +1,7 @@
 module HL.Optimize where
 
 import HL
-import Types
+import Term
 
 smartK :: HC v a b -> HL v a b
 smartK HCIdTacK = HLIdTac

@@ -2,7 +2,6 @@
 
 module Tactic where
 
-import Types
 import Term
 import Util
 import Control.Monad
