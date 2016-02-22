@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Tactic where
 
 import Types
@@ -6,7 +8,8 @@ import Util
 import Control.Monad
 import Control.Monad.State
 
-fnUnify :: (Subst a s, Eq a, Show a, Show s) => Term a -> Term a -> s -> Maybe s
+fnUnify :: (Subst a (Term v a) s, Eq a, Eq v, Show a, Show s)
+           => Term v a -> Term v a -> s -> Maybe s
 fnUnify (App f xs) (App g ys) s
    | f == g && length xs == length ys =
       foldM
@@ -21,9 +24,9 @@ fnUnify (UVar l) r s = inst l r s
 fnUnify l (UVar r) s = inst r l s
 fnUnify _ _ _ = Nothing
 
-unify :: (Eq a, MonadState s m, Subst a s, Show a, Show s)
-         => Term a
-         -> Term a
+unify :: (Eq a, MonadState s m, Subst a (Term v a) s, Show a, Show s, Eq v)
+         => Term v a
+         -> Term v a
          -> m Bool
 unify a b = do
    st <- get
@@ -33,9 +36,9 @@ unify a b = do
          put new
          return True
 
-instantiate :: (MonadState t m, Subst a t)
-               => Term a
-               -> m (Term a)
+instantiate :: (MonadState t m, Subst a (Term v a) t)
+               => Term v a
+               -> m (Term v a)
 instantiate a = do
    st <- get
    let instFn u = case (lkup st u) of

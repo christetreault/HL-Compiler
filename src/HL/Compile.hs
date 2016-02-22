@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module HL.Compile where
 
 import Types
@@ -22,12 +23,13 @@ import qualified Data.Map as Map
 -- In both cases, [m] should be a Monad with
 -- 1) A State of [s] such that [Subst s v]
 -- 2) A MonadPlus (used for errors)
-type Tactic m v = Term v -> m [Term v]
-type TacticK m v = [Term v] -> m [Term v]
+type Tactic m v s = Term v s -> m [Term v s]
+type TacticK m v s = [Term v s] -> m [Term v s]
 
 -- Compile a program
-compile :: (Subst VarId s, Monad m, MonadState s m, MonadPlus m, Show s) =>
-           HLProg VarId -> Tactic m VarId
+compile :: (Subst VarId (Term v VarId) s, Eq v,
+            Monad m, MonadState s m, MonadPlus m, Show s) =>
+           HLProg v VarId -> Tactic m v VarId
 compile prg =
     case progEntry prg `Map.lookup` progNames prg of
       Nothing ->
@@ -39,9 +41,9 @@ compile prg =
       env = fmap (\t -> compileHl t env) $ progFns prg
 
 -- Compile a tactic given the environment of defined tactics
-compileHl :: (Ord f, Eq v, Show f, Show v, Subst v s,
+compileHl :: (Ord f, Eq v, Eq val, Show f, Show v, Subst v (Term val v) s,
               Monad m, MonadState s m, MonadPlus m, Show s) =>
-             HL v f -> Map.Map f (Tactic m v) -> Tactic m v
+             HL val v f -> Map.Map f (Tactic m val v) -> Tactic m val v
 compileHl (HLApply r) _ = \gl -> do
    s <- get
    let (l, s') = fresh (ruleVars r) s
@@ -72,9 +74,9 @@ compileHl (HLK hc) env =
     \gl -> hcT [gl]
 
 -- Compile a tactic continuation given the environment of defined tactics
-compileHc :: (Ord f, Eq v, Show f, Show v, Subst v s,
+compileHc :: (Ord f, Eq v, Eq val, Show f, Show v, Subst v (Term val v) s,
               Monad m, MonadState s m, MonadPlus m, Show s) =>
-             HC v f -> Map.Map f (Tactic m v) -> TacticK m v
+             HC val v f -> Map.Map f (Tactic m val v) -> TacticK m val v
 compileHc (HCAll hl) env =
     let hlT = compileHl hl env in
     foldM (\ acc gl -> do res <- hlT gl
