@@ -6,6 +6,7 @@
 module Term where
 
 import qualified Data.Map as Map
+import Text.PrettyPrint.HughesPJClass
 import Util
 
 type VarId = Integer
@@ -16,11 +17,30 @@ data Term b a =
    | UVar a
    deriving (Eq, Ord, Show)
 
+instance (Pretty a, Pretty b) => Pretty (Term b a) where
+   pPrint (UVar a) = braces $ pPrint a
+   pPrint (Var i) = parens $ pPrint i
+   pPrint (App b ts) = text "App"
+                       <+> (quotes (pPrint b))
+                       <+> lbrace
+                       $$ (nest 1 (vcat $ fmap pPrint ts)
+                           $+$ rbrace)
+
 data Rule b a =
    Rule { ruleVars :: VarId,
           rulePrems :: [Term b a],
           ruleConcl :: Term b a}
    deriving (Eq, Ord, Show)
+
+instance (Pretty a, Pretty b) => Pretty (Rule b a) where
+   pPrint (Rule vs pm cl) = renderVars vs
+                            $$ (vcat $ fmap renderPrem pm)
+                            $$ (text $ take 20 $ repeat '=')
+                            $$ renderConc cl
+      where
+         renderVars v = text "Variables:" $$ nest 2 (pPrint v)
+         renderPrem t = text "Premise:" $$ nest 2 (pPrint t)
+         renderConc t = text "Conclusion:" $$ nest 2 (pPrint t)
 
 data SubstEnv b a =
    SubstEnv (Map.Map VarId (Term b a)) Integer
