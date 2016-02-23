@@ -18,8 +18,22 @@ data Term b a =
    deriving (Eq, Ord, Show)
 
 instance (Pretty a, Pretty b) => Pretty (Term b a) where
-   pPrint (UVar a) = braces $ pPrint a
+   pPrint (UVar a) = brackets $ pPrint a
    pPrint (Var i) = parens $ pPrint i
+   pPrint (App b [UVar a]) = text "App"
+                             <+> (quotes (pPrint b))
+                             <+> lbrace
+                             <+> (brackets $ pPrint a)
+                             <+> rbrace
+   pPrint (App b [Var i]) = text "App"
+                             <+> (quotes (pPrint b))
+                             <+> lbrace
+                             <+> (parens $ pPrint i)
+                             <+> rbrace
+   pPrint (App b []) = text "App"
+                       <+> (quotes (pPrint b))
+                       <+> lbrace
+                       <> rbrace
    pPrint (App b ts) = text "App"
                        <+> (quotes (pPrint b))
                        <+> lbrace

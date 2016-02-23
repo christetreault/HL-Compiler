@@ -1,25 +1,60 @@
 module HL where
 
 import Term
+import Util
 import qualified Data.Map as Map
+import Text.PrettyPrint.HughesPJClass
 
+period :: Doc
+period = text "."
+
+-- | A high-level program continuation
 data HC v b a =
-   HCAll (HL v b a)
-   | HCEach [HL v b a]
-   | HCIdTacK
-   | HCFailK
+   HCAll (HL v b a) -- ^ Take a given tactic, apply to every subgoal
+   | HCEach [HL v b a] -- ^ Zip a list of tactics with a list of subgoals
+   | HCIdTacK -- ^ Identity; succeed and do nothing
+   | HCFailK -- ^ Fail and do nothing
    deriving (Eq, Ord, Show)
 
+-- | A high-level program
 data HL v b a =
-   HLApply (Rule v b)
-   | HLCall a
-   | HLFail
-   | HLIdTac
-   | HLOr (HL v b a) (HL v b a)
-   | HLSeq (HL v b a) (HC v b a)
-   | HLAssert (Term v b) (HL v b a)
-   | HLK (HC v b a)
+   HLApply (Rule v b) -- ^ Apply a rule
+   | HLCall a -- ^ Call a function
+   | HLFail -- ^ Fail a tactic
+   | HLIdTac -- ^ Identity; succeed and do nothing
+   | HLOr (HL v b a) (HL v b a) -- ^ Try LHS, if it fails try RHS
+   | HLSeq (HL v b a) (HC v b a) -- ^ Try LHS, if it succeeds, produce list of
+                                 -- subgoals to be processed by the RHS HC
+   | HLAssert (Term v b) (HL v b a) -- ^ Assertion (currently unused)
+   | HLK (HC v b a) -- ^ Lift a continuation to a tactic
    deriving (Eq, Ord, Show)
+
+instance (Pretty v, Pretty a, Pretty b) => Pretty (HL v b a) where
+   pPrint (HLApply r) = text "apply"
+                        <+> parens (nest 2 (pPrint r))
+   pPrint (HLCall f) = text "call"
+                       <+> quotes (pPrint f)
+   pPrint (HLFail) = brackets (text "fail")
+   pPrint (HLIdTac) = brackets (text "idtac")
+   pPrint (HLOr lhs rhs) = (pPrint lhs)
+                           <+> (text "∨")
+                           $$ (pPrint rhs)
+   pPrint (HLSeq lhs rhss) = pPrint lhs
+                             <+> semi
+                             $$ pPrint rhss
+   pPrint (HLAssert lhst rhs) = text "assert"
+                                <+> pPrint lhst
+                                $$ text "as"
+                                <+> pPrint rhs
+   pPrint (HLK hc) = text "toTactic"
+                     <+> parens (pPrint hc)
+
+instance (Pretty v, Pretty a, Pretty b) => Pretty (HC v b a) where
+   pPrint (HCAll hl) = text "all" <+> pPrint hl
+   pPrint (HCEach hls) = text "each"
+                         $$ nest 2 (vcat (fmap pPrint hls))
+   pPrint (HCIdTacK) = brackets (text "continuation idtac")
+   pPrint (HCFailK) = brackets (text "continuation fail")
 
 instance Functor (HL v b) where
    fmap f (HLCall x) = HLCall $ f x
@@ -85,6 +120,22 @@ data HLProg v a =
             progFns :: Map.Map Integer (HL v a Integer)
           }
    deriving (Show)
+
+instance (Pretty v, Pretty a) => Pretty (HLProg v a) where
+   pPrint hl = (text "Entry point:" <+> text (progEntry hl))
+               $$ vcat functions
+      where
+         functions = fmap (\(name, i) -> text name
+                                         <+> lbrace
+                                         $$ nest 2 (pPrint (getImpl i))
+                                         $$ rbrace)
+                          (Map.assocs $ progNames hl)
+         getImpl i = Map.findWithDefault
+                     (impossible "function declared but not defined!")
+                     i
+                     (progFns hl)
+
+
 
 makeProg :: Map.Map String (Tac v t)
             -> String
