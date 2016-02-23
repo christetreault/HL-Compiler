@@ -15,7 +15,10 @@ data Term b a =
    App b [Term b a]
    | Var VarId
    | UVar a
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord)
+
+instance (Pretty b, Pretty a) => Show (Term b a) where
+   show = render . pPrint
 
 instance (Pretty a, Pretty b) => Pretty (Term b a) where
    pPrint (UVar a) = brackets $ pPrint a
@@ -44,7 +47,10 @@ data Rule b a =
    Rule { ruleVars :: VarId,
           rulePrems :: [Term b a],
           ruleConcl :: Term b a}
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord)
+
+instance (Pretty b, Pretty a) => Show (Rule b a) where
+   show = render . pPrint
 
 instance (Pretty a, Pretty b) => Pretty (Rule b a) where
    pPrint (Rule vs pm cl) = renderVars vs

@@ -5,16 +5,16 @@ import Util
 import qualified Data.Map as Map
 import Text.PrettyPrint.HughesPJClass
 
-period :: Doc
-period = text "."
-
 -- | A high-level program continuation
 data HC v b a =
    HCAll (HL v b a) -- ^ Take a given tactic, apply to every subgoal
    | HCEach [HL v b a] -- ^ Zip a list of tactics with a list of subgoals
    | HCIdTacK -- ^ Identity; succeed and do nothing
    | HCFailK -- ^ Fail and do nothing
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord)
+
+instance (Pretty v, Pretty b, Pretty a) => Show (HC v b a) where
+   show = render . pPrint
 
 -- | A high-level program
 data HL v b a =
@@ -27,7 +27,10 @@ data HL v b a =
                                  -- subgoals to be processed by the RHS HC
    | HLAssert (Term v b) (HL v b a) -- ^ Assertion (currently unused)
    | HLK (HC v b a) -- ^ Lift a continuation to a tactic
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord)
+
+instance (Pretty v, Pretty b, Pretty a) => Show (HL v b a) where
+   show = render . pPrint
 
 instance (Pretty v, Pretty a, Pretty b) => Pretty (HL v b a) where
    pPrint (HLApply r) = text "apply"
@@ -119,7 +122,10 @@ data HLProg v a =
             progNames :: Map.Map String Integer,
             progFns :: Map.Map Integer (HL v a Integer)
           }
-   deriving (Show)
+
+instance (Pretty v, Pretty a) => Show (HLProg v a) where
+   show = render . pPrint
+
 
 instance (Pretty v, Pretty a) => Pretty (HLProg v a) where
    pPrint hl = (text "Entry point:" <+> text (progEntry hl))

@@ -13,10 +13,6 @@ import Util
 import Control.Monad.State
 import qualified Data.Map as Map
 
-{-
-   For now, implementing without memoization. Will revisit
-   this when I know it all works.
--}
 
 -- The executable type of a tactic (Tactic) and a tactic continuation (TacticK)
 -- In both cases, [m] should be a Monad with
