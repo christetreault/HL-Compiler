@@ -21,7 +21,7 @@ instance (Pretty b, Pretty a) => Show (Term b a) where
    show = render . pPrint
 
 instance (Pretty a, Pretty b) => Pretty (Term b a) where
-   pPrint (UVar a) = brackets $ pPrint a
+   pPrint (UVar a) = parens (char '?' <> pPrint a)
    pPrint (Var i) = parens $ pPrint i
    pPrint (App b [UVar a]) = text "App"
                              <+> (quotes (pPrint b))

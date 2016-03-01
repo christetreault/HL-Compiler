@@ -39,7 +39,7 @@ doN n t = do
 
 implement coq 8.5 + (maybe m arg inn compile should be a list instead of maybe)
 implement coq once combinator
-fix uvar notation (?x)
+
 query: run tactic on Term [something] (?var)
    - should say yes or no
    - should print out what subst makes it unify
