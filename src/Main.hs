@@ -33,3 +33,26 @@ doN n t = do
    let problem = mkEven $ mkN (10000 :: Integer)
    let repetitions = take n $ repeat (t problem)
    mconcat $ repetitions
+
+
+{-
+
+implement coq 8.5 + (maybe m arg inn compile should be a list instead of maybe)
+implement coq once combinator
+fix uvar notation (?x)
+query: run tactic on Term [something] (?var)
+   - should say yes or no
+   - should print out what subst makes it unify
+   - need to know number of vars, fresh with that much
+- queryTac
+  {
+      run fresh (number of free vars)
+      tryTac (with original term) -- should not drop state
+      if success, instantiate term with its resulting substitution from resulting state
+- embed haskell functions into the langauge
+
+
+  }
+
+
+-}

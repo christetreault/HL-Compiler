@@ -19,8 +19,14 @@ fnUnify (Var l) (Var r) s
    | l == r = Just s
 fnUnify (UVar l) (UVar r) s
    | l == r = Just s
-fnUnify (UVar l) r s = inst l r s
-fnUnify l (UVar r) s = inst r l s
+fnUnify (UVar l) r s =
+   case lkup s l of
+      Just e -> fnUnify e r s
+      Nothing -> inst l r s
+fnUnify l (UVar r) s =
+   case lkup s r of
+      Just e -> fnUnify l e s
+      Nothing -> inst r l s
 fnUnify _ _ _ = Nothing
 
 unify :: (Eq a, MonadState s m, Subst a (Term v a) s, Show a, Show s, Eq v)
