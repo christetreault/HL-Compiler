@@ -102,7 +102,7 @@ instance Monoid (HL v b a) where
    mappend = HLPlus
    mconcat [] = HLFail
    mconcat [t] = t
-   mconcat (t:ts) = HLOr t $ mconcat ts
+   mconcat (t:ts) = HLPlus t $ mconcat ts
 
 instance Functor (HC v b) where
    fmap f (HCAll x) = HCAll $ fmap f x
@@ -172,6 +172,4 @@ makeProg fns entry = do
          return $ Map.fromList $ zip lhss rhss
 
 hlFirst :: [HL v a b] -> HL v a b
-hlFirst [] = HLFail
-hlFirst [t] = t
-hlFirst (t:ts) = HLOr t $ hlFirst ts
+hlFirst = mconcat
