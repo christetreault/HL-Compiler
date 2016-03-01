@@ -28,12 +28,12 @@ instance Pretty CalcTerm where
 
 tryTac :: Term CalcTerm VarId
           -> HLProg CalcTerm VarId
-          -> Maybe [Term CalcTerm VarId]
-tryTac t p = evalStateT (action t) empty
+          -> [[Term CalcTerm VarId]]
+tryTac t p = evalState (action (isRec t)) empty
    where
       action :: Term CalcTerm VarId
-                -> StateT (SubstEnv CalcTerm VarId)
-                          Maybe [Term CalcTerm VarId]
+                -> State (SubstEnv CalcTerm VarId)
+                   [[Term CalcTerm VarId]]
       action = compile p
 
 isRec t = App CTRec [t]

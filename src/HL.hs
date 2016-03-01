@@ -25,6 +25,7 @@ data HL v b a =
    | HLOr (HL v b a) (HL v b a) -- ^ Try LHS, if it fails try RHS
    | HLPlus (HL v b a) (HL v b a) -- ^ Like Or, but if LHS succeeds, then a
      -- subsequent tactic fails, backtracks and tries RHS
+   | HLOnce (HL v b a) -- ^ Tries the tactic with no backtracking
    | HLSeq (HL v b a) (HC v b a) -- ^ Try LHS, if it succeeds, produce list of
                                  -- subgoals to be processed by the RHS HC
    | HLAssert (Term v b) (HL v b a) -- ^ Assertion (currently unused)
@@ -47,6 +48,7 @@ instance (Pretty v, Pretty a, Pretty b) => Pretty (HL v b a) where
    pPrint (HLPlus lhs rhs) = (pPrint lhs)
                            <+> (text "+")
                            $$ (pPrint rhs)
+   pPrint (HLOnce hl) = text "once" <> parens (pPrint hl)
    pPrint (HLSeq lhs rhss) = pPrint lhs
                              <+> semi
                              $$ pPrint rhss
@@ -55,7 +57,7 @@ instance (Pretty v, Pretty a, Pretty b) => Pretty (HL v b a) where
                                 $$ text "as"
                                 <+> pPrint rhs
    pPrint (HLK hc) = text "toTactic"
-                     <+> parens (pPrint hc)
+                     <> parens (pPrint hc)
 
 instance (Pretty v, Pretty a, Pretty b) => Pretty (HC v b a) where
    pPrint (HCAll hl) = text "all" <+> pPrint hl
@@ -72,6 +74,7 @@ instance Functor (HL v b) where
    fmap f (HLPlus l r) = HLPlus (fmap f l) (fmap f r)
    fmap f (HLSeq l r) = HLSeq (fmap f l) (fmap f r)
    fmap f (HLAssert t c) = HLAssert t (fmap f c)
+   fmap f (HLOnce h) = HLOnce $ fmap f h
    fmap f (HLK c) = HLK $ fmap f c
    fmap _ (HLApply r) = HLApply r
 
@@ -83,6 +86,7 @@ instance Foldable (HL v b) where
    foldMap f (HLPlus l r) = (foldMap f l) `mappend` (foldMap f r)
    foldMap f (HLSeq l r) = (foldMap f l) `mappend` (foldMap f r)
    foldMap f (HLAssert _ c) = (foldMap f c)
+   foldMap f (HLOnce h) = foldMap f h
    foldMap f (HLK c) = foldMap f c
    foldMap _ (HLApply _) = mempty
 
@@ -94,6 +98,7 @@ instance Traversable (HL v b) where
    traverse f (HLPlus l r) = HLPlus <$> (traverse f l) <*> (traverse f r)
    traverse f (HLSeq l r) = HLSeq <$> (traverse f l) <*> (traverse f r)
    traverse f (HLAssert t c) = HLAssert t <$> (traverse f c)
+   traverse f (HLOnce h) = HLOnce <$> traverse f h
    traverse f (HLK c) = HLK <$> traverse f c
    traverse _ (HLApply r) = pure (HLApply r)
 

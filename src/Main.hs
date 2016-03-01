@@ -8,7 +8,7 @@ import Term
 import Control.Monad.State
 
 main :: IO ()
-main = do
+main = undefined {-do
    let n = 1
    let compiled = doN n (tac_evenOddOpt)
    putStrLn $ show compiled
@@ -32,7 +32,7 @@ doN :: Int
 doN n t = do
    let problem = mkEven $ mkN (10000 :: Integer)
    let repetitions = take n $ repeat (t problem)
-   mconcat $ repetitions
+   mconcat $ repetitions -}
 
 
 {-

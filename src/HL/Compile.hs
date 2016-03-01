@@ -11,6 +11,7 @@ import HL
 import Term
 import Util
 import Control.Monad.State
+import Data.Foldable
 import qualified Data.Map as Map
 
 
@@ -56,17 +57,20 @@ compileHl (HLCall name) env =
 compileHl HLFail _ = \_ -> mzero
 compileHl HLIdTac _ = \gl -> return [gl]
 compileHl (HLOr lhs rhs) env =
-    let lhsT = compileHl lhs env in
-    let rhsT = compileHl rhs env in
-    \gl -> mplus (lhsT gl) (rhsT gl)
+   compileHl (HLOnce $ HLPlus lhs rhs) env
+compileHl (HLPlus lhs rhs) env =
+   let lhsT = compileHl lhs env in
+   let rhsT = compileHl rhs env in
+   \gl -> mplus (lhsT gl) (rhsT gl)
+compileHl (HLOnce h) env = compileHl h env
 compileHl (HLSeq lhs rhs) env =
    let lhsT = compileHl lhs env in
    let rhsT = compileHc rhs env in
    \gl -> lhsT gl >>= rhsT
 compileHl (HLAssert _ hl) env = compileHl hl env
 compileHl (HLK hc) env =
-    let hcT = compileHc hc env in
-    \gl -> hcT [gl]
+   let hcT = compileHc hc env in
+   \gl -> hcT [gl]
 
 -- Compile a tactic continuation given the environment of defined tactics
 compileHc :: (Ord f, Eq v, Eq val, Show f, Show v, Subst v (Term val v) s,
