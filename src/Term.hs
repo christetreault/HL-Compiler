@@ -2,12 +2,16 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Term where
 
 import qualified Data.Map as Map
 import Text.PrettyPrint.HughesPJClass
 import Util
+import Control.DeepSeq
+import GHC.Generics
+
 
 type VarId = Integer
 
@@ -15,7 +19,9 @@ data Term b a =
    App b [Term b a]
    | Var VarId
    | UVar a
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Generic)
+
+instance (NFData a, NFData b) => NFData (Term a b)
 
 instance (Pretty b, Pretty a) => Show (Term b a) where
    show = render . pPrint

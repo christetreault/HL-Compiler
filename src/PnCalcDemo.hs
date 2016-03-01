@@ -1,12 +1,17 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module PnCalcDemo where
 
 import HL
 import HL.Compile
+import HL.Optimize
 import Control.Monad.State
 import Term
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import Text.PrettyPrint.HughesPJClass hiding (empty)
+import Control.DeepSeq
+import GHC.Generics
 
 data CalcTerm =
    CTRec
@@ -14,7 +19,9 @@ data CalcTerm =
    | CTNil
    | CTChar Char
    | CTRecThen
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Generic)
+
+instance NFData CalcTerm
 
 instance Show CalcTerm where
    show = render . pPrint
@@ -26,14 +33,17 @@ instance Pretty CalcTerm where
    pPrint (CTChar c) = quotes (pPrint c)
    pPrint (CTRecThen) = text "Recognized then"
 
+tryBasicBin = (flip tryTac) basicBinAdd
+tryOptBasicBin = (flip tryTac) $ normalizeProg basicBinAdd
+
 tryTac :: Term CalcTerm VarId
           -> HLProg CalcTerm VarId
           -> [[Term CalcTerm VarId]]
-tryTac t p = evalState (action (isRec t)) empty
+tryTac t p = evalStateT (action (isRec t)) empty
    where
       action :: Term CalcTerm VarId
-                -> State (SubstEnv CalcTerm VarId)
-                   [[Term CalcTerm VarId]]
+                -> StateT (SubstEnv CalcTerm VarId)
+                   [] [Term CalcTerm VarId]
       action = compile p
 
 isRec t = App CTRec [t]
@@ -51,6 +61,7 @@ recNil = Rule { ruleVars = 1,
                 rulePrems = [isRecThen (Var 0) isNil],
                 ruleConcl = isRec (Var 0)}
 
+reallyLong = "+1+1++11+++111++11++11+1++11+++111+1+1++11+1+1++11+1+1+11"
 
 rec1 = recN '1'
 rec2 = recN '2'

@@ -23,6 +23,7 @@ smartAll x = HCAll x
 
 normalizeHl :: HC v a b -> HL v a b -> HL v a b
 normalizeHl k (HLOr l r) = HLOr (normalizeHl k l) (normalizeHl k r)
+normalizeHl k (HLPlus l r) = HLPlus (normalizeHl k l) (normalizeHl k r)
 normalizeHl _ HLFail = HLFail
 normalizeHl k HLIdTac = smartK k
 normalizeHl k (HLApply r)
