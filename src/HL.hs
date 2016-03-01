@@ -23,6 +23,8 @@ data HL v b a =
    | HLFail -- ^ Fail a tactic
    | HLIdTac -- ^ Identity; succeed and do nothing
    | HLOr (HL v b a) (HL v b a) -- ^ Try LHS, if it fails try RHS
+   | HLPlus (HL v b a) (HL v b a) -- ^ Like Or, but if LHS succeeds, then a
+     -- subsequent tactic fails, backtracks and tries RHS
    | HLSeq (HL v b a) (HC v b a) -- ^ Try LHS, if it succeeds, produce list of
                                  -- subgoals to be processed by the RHS HC
    | HLAssert (Term v b) (HL v b a) -- ^ Assertion (currently unused)
@@ -41,6 +43,9 @@ instance (Pretty v, Pretty a, Pretty b) => Pretty (HL v b a) where
    pPrint (HLIdTac) = brackets (text "idtac")
    pPrint (HLOr lhs rhs) = (pPrint lhs)
                            <+> (text "∨")
+                           $$ (pPrint rhs)
+   pPrint (HLPlus lhs rhs) = (pPrint lhs)
+                           <+> (text "+")
                            $$ (pPrint rhs)
    pPrint (HLSeq lhs rhss) = pPrint lhs
                              <+> semi
@@ -64,6 +69,7 @@ instance Functor (HL v b) where
    fmap _ HLFail = HLFail
    fmap _ HLIdTac = HLIdTac
    fmap f (HLOr l r) = HLOr (fmap f l) (fmap f r)
+   fmap f (HLPlus l r) = HLPlus (fmap f l) (fmap f r)
    fmap f (HLSeq l r) = HLSeq (fmap f l) (fmap f r)
    fmap f (HLAssert t c) = HLAssert t (fmap f c)
    fmap f (HLK c) = HLK $ fmap f c
@@ -74,6 +80,7 @@ instance Foldable (HL v b) where
    foldMap _ HLFail = mempty
    foldMap _ HLIdTac = mempty
    foldMap f (HLOr l r) = (foldMap f l) `mappend` (foldMap f r)
+   foldMap f (HLPlus l r) = (foldMap f l) `mappend` (foldMap f r)
    foldMap f (HLSeq l r) = (foldMap f l) `mappend` (foldMap f r)
    foldMap f (HLAssert _ c) = (foldMap f c)
    foldMap f (HLK c) = foldMap f c
@@ -84,6 +91,7 @@ instance Traversable (HL v b) where
    traverse _ HLFail = pure HLFail
    traverse _ HLIdTac = pure HLIdTac
    traverse f (HLOr l r) = HLOr <$> (traverse f l) <*> (traverse f r)
+   traverse f (HLPlus l r) = HLPlus <$> (traverse f l) <*> (traverse f r)
    traverse f (HLSeq l r) = HLSeq <$> (traverse f l) <*> (traverse f r)
    traverse f (HLAssert t c) = HLAssert t <$> (traverse f c)
    traverse f (HLK c) = HLK <$> traverse f c
@@ -91,7 +99,7 @@ instance Traversable (HL v b) where
 
 instance Monoid (HL v b a) where
    mempty = HLFail
-   mappend = HLOr
+   mappend = HLPlus
    mconcat [] = HLFail
    mconcat [t] = t
    mconcat (t:ts) = HLOr t $ mconcat ts
