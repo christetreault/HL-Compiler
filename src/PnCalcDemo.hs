@@ -64,10 +64,12 @@ recNil = Rule { ruleVars = 1,
 
 reallyLong = "+1+1++11+++111++11++11+1++11+++111+1+1++11+1+1++11+1+1+11"
 
+
 unifyPrefix s = isRec $ isCons (UVar 0) (buildString s)
-
-
 testUnifyPrefix s = query 1 basicBinAdd (unifyPrefix s)
+
+unifyPrefix2 s = isRec $ isCons (UVar 0) (isCons (UVar 1) (buildString s))
+testUnifyPrefix2 s = query 2 basicBinAdd (unifyPrefix2 s)
 
 rec1 = recN '1'
 rec2 = recN '2'
