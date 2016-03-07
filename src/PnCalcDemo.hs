@@ -5,6 +5,7 @@ module PnCalcDemo where
 import HL
 import HL.Compile
 import HL.Optimize
+import HL.Query
 import Control.Monad.State
 import Term
 import qualified Data.Map as Map
@@ -62,6 +63,11 @@ recNil = Rule { ruleVars = 1,
                 ruleConcl = isRec (Var 0)}
 
 reallyLong = "+1+1++11+++111++11++11+1++11+++111+1+1++11+1+1++11+1+1+11"
+
+unifyPrefix s = isRec $ isCons (UVar 0) (buildString s)
+
+
+testUnifyPrefix s = query 1 basicBinAdd (unifyPrefix s)
 
 rec1 = recN '1'
 rec2 = recN '2'

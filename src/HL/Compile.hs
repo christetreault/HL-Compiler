@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module HL.Compile where
 
 import Tactic
@@ -11,7 +12,6 @@ import HL
 import Term
 import Util
 import Control.Monad.State
-import Data.Foldable
 import qualified Data.Map as Map
 
 -- The executable type of a tactic (Tactic) and a tactic continuation (TacticK)
@@ -32,11 +32,11 @@ compileList :: (Subst VarId (Term v VarId) s, Eq v,
                 Monad m, MonadState s m, MonadPlus m, Show s)
                => HLProg v VarId
                -> Tactic m v VarId
-compileList = compile listBTEF
-
-listBTEF v = case v of
-   [] -> return []
-   x:_ -> return [x]
+compileList = compile listBTE
+ where
+    listBTE v = case v of
+       [] -> return []
+       x:_ -> return [x]
 
 -- Compile a program
 compile :: (Subst VarId (Term v VarId) s, Eq v,

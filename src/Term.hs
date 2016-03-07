@@ -61,7 +61,7 @@ instance (Pretty b, Pretty a) => Show (Rule b a) where
 instance (Pretty a, Pretty b) => Pretty (Rule b a) where
    pPrint (Rule vs pm cl) = renderVars vs
                             $$ (vcat $ fmap renderPrem pm)
-                            $$ (text $ take 20 $ repeat '=')
+                            $$ (divideBar '=')
                             $$ renderConc cl
       where
          renderVars v = text "Variables:" $$ nest 2 (pPrint v)
@@ -95,3 +95,5 @@ varsToUVars :: (Integer -> Term v t) -> Term v u -> Term v t
 varsToUVars on (App f xs) = App f $ fmap (varsToUVars on) xs
 varsToUVars on (Var v) = on v
 varsToUVars _ _ = impossible "varsToUVars called on UVar"
+
+divideBar c = (text $ take 20 $ repeat c)
