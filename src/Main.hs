@@ -32,7 +32,7 @@ tac t p = evalStateT (action t) empty
    where
       action :: Term Integer VarId
                 -> StateT (SubstEnv Integer VarId) Maybe [Term Integer VarId]
-      action = compile p
+      action = compileMaybe p
 
 {-
    do

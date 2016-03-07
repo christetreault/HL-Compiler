@@ -44,7 +44,7 @@ tryTac t p = evalStateT (action (isRec t)) empty
       action :: Term CalcTerm VarId
                 -> StateT (SubstEnv CalcTerm VarId)
                    [] [Term CalcTerm VarId]
-      action = compile p
+      action = compileList p
 
 isRec t = App CTRec [t]
 isCons l r = App CTCons [l, r]
