@@ -1,5 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Demo.EvenOdd where
 
+import Util
 import HL
 import Term
 import qualified Data.Map as Map
@@ -7,8 +10,10 @@ import Data.Maybe (fromJust)
 import Control.Monad.State
 import HL.Compile
 import HL.Optimize
+import HL.Query
 import Criterion.Main
 import Test.Tasty
+import Test.Tasty.SmallCheck
 
 
 
@@ -28,9 +33,11 @@ mkEven t = App 0 [t]
 mkOdd t = App 1 [t]
 mkSucc t = App 2 [t]
 mkZero = App 3 []
-mkN n = case n of
-   0 -> mkZero
-   _ -> mkSucc $ mkN $ n - 1
+mkN n
+   | n >= 0 = case n of
+                 0 -> mkZero
+                 _ -> mkSucc $ mkN $ n - 1
+   | otherwise = impossible "n must be positive"
 
 varZero = Var 0
 
@@ -84,12 +91,34 @@ custom t = case t of
 
 evenOddBenchSuite :: Benchmark
 evenOddBenchSuite =
-   env (return $ mkN (10000 :: Integer)) $
+   env (return $ mkEven $ mkN (10000 :: Integer)) $
    \ ~(t) -> bgroup "Even-Odd"
              [bench "Standard" $ nf tac_evenOdd t,
               bench "Manual" $ nf tac_evenOddMan t,
               bench "Optimized" $ nf tac_evenOddOpt t]
 
 evenOddTestSuite :: TestTree
-evenOddTestSuite = testGroup "Even-Odd"
-                   []
+evenOddTestSuite =
+   testGroup "Even-Odd"
+   [testProperty "Positive even numbers" posEven,
+    testProperty "Positive odd numbers" posOdd,
+    testProperty "If n is even, succ(n) is not" succNotSame]
+   where
+      posEven :: Integer -> Property IO
+      posEven a = (>= (0 :: Integer))
+                  ==> \n -> case (n `mod` 2 :: Integer) of
+                               0 -> (tac_evenOdd (mkEven $ mkN n))
+                                    == Just []
+                               1 -> (tac_evenOdd (mkEven $ mkN n))
+                                    == Nothing
+      posOdd :: Integer -> Property IO
+      posOdd a = (>= (0 :: Integer))
+                 ==> \n -> case (n `mod` 2 :: Integer) of
+                              1 -> (tac_evenOdd (mkOdd $ mkN n))
+                                   == Just []
+                              0 -> (tac_evenOdd (mkOdd $ mkN n))
+                                   == Nothing
+      succNotSame :: Integer -> Property IO
+      succNotSame a = (>= (0 :: Integer))
+                      ==> \n -> (tac_evenOdd (mkEven $ mkN (n :: Integer)))
+                                /= (tac_evenOdd (mkEven $ mkSucc $ mkN n))

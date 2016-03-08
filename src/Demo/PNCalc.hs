@@ -15,6 +15,7 @@ import Control.DeepSeq
 import GHC.Generics
 import Criterion.Main
 import Test.Tasty
+import Test.Tasty.HUnit
 
 data CalcTerm =
    CTRec
@@ -73,6 +74,10 @@ testUnifyPrefix s = query 1 basicBinAdd (unifyPrefix s)
 unifyPrefix2 s = isRec $ isCons (UVar 0) (isCons (UVar 1) (buildString s))
 testUnifyPrefix2 s = query 2 basicBinAdd (unifyPrefix2 s)
 
+unifySuffix2 = isRec
+               $ isCons (isChar '+') (isCons (UVar 0) (isCons (UVar 1) (isNil)))
+testUnifySuffix2 = query 2 basicBinAdd unifySuffix2
+
 rec1 = recN '1'
 rec2 = recN '2'
 rec3 = recN '3'
@@ -119,4 +124,17 @@ pnCalcBenchSuite =
 
 pnCalcTestSuite :: TestTree
 pnCalcTestSuite = testGroup "PN Calculator"
-                  []
+                  [testCase "Empty string not recognized" testEmpty,
+                   testCase "One recognized" (testChar '1'),
+                   testCase "Zero recognized" (testChar '0'),
+                   testCase "++111 recognized" testAdd,
+                   testCase "Really long string recognized" testRL,
+                   testCase "+(?0)(?1) query success" testQuery
+                  ]
+   where
+      testEmpty = (tryBasicBin $ buildString "") @?= []
+      testChar c = (tryBasicBin $ buildString [c]) @?= [[]]
+      testAdd = (tryBasicBin $ buildString "++111") @?= [[]]
+      testRL = (tryBasicBin $ buildString reallyLong) @?= [[]]
+      testQuery = let (QueryYes us2 solns) = testUnifySuffix2 in
+                  (length solns, us2) @?= (4, unifySuffix2)
