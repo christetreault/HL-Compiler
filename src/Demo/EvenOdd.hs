@@ -1,9 +1,28 @@
-module Demo where
+module Demo.EvenOdd where
 
 import HL
 import Term
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
+import Control.Monad.State
+import HL.Compile
+import HL.Optimize
+import Criterion.Main
+import Test.Tasty
+
+
+
+tac_evenOdd t = tac t evenOddTac
+tac_evenOddMan t = tac t evenOddTacOpt
+tac_evenOddOpt t = tac t $ normalizeProg evenOddTac
+
+tac :: Term Integer VarId -> HLProg Integer VarId ->Maybe [Term Integer VarId]
+tac t p = evalStateT (action t) empty
+   where
+      action :: Term Integer VarId
+                -> StateT (SubstEnv Integer VarId) Maybe [Term Integer VarId]
+      action = compileMaybe p
+
 
 mkEven t = App 0 [t]
 mkOdd t = App 1 [t]
@@ -58,3 +77,19 @@ custom t = case t of
       checkEven _ = False
       checkOdd (App 2 [t'']) = checkEven t''
       checkOdd _ = False
+
+----------------------------------------------------------------------
+-- Tests
+----------------------------------------------------------------------
+
+evenOddBenchSuite :: Benchmark
+evenOddBenchSuite =
+   env (return $ mkN (10000 :: Integer)) $
+   \ ~(t) -> bgroup "Even-Odd"
+             [bench "Standard" $ nf tac_evenOdd t,
+              bench "Manual" $ nf tac_evenOddMan t,
+              bench "Optimized" $ nf tac_evenOddOpt t]
+
+evenOddTestSuite :: TestTree
+evenOddTestSuite = testGroup "Even-Odd"
+                   []

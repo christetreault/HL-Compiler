@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module PnCalcDemo where
+module Demo.PNCalc where
 
 import HL
 import HL.Compile
@@ -13,6 +13,8 @@ import Data.Maybe (fromJust)
 import Text.PrettyPrint.HughesPJClass hiding (empty)
 import Control.DeepSeq
 import GHC.Generics
+import Criterion.Main
+import Test.Tasty
 
 data CalcTerm =
    CTRec
@@ -102,7 +104,19 @@ basicBinAdd = fromJust $ makeProg fnMap entryPoint
               HLApply recNil]
       fnMap = Map.fromList
               [(entryPoint,
-                hlFirst [ HLSeq x $ HCAll $ HLCall entryPoint | x <- tacs ])] {-
-                HLSeq
-                   (hlFirst tacs)
-                   (HCAll $ HLCall entryPoint))]-}
+                hlFirst [ HLSeq x $ HCAll $ HLCall entryPoint | x <- tacs ])]
+
+----------------------------------------------------------------------
+-- Tests
+----------------------------------------------------------------------
+
+pnCalcBenchSuite :: Benchmark
+pnCalcBenchSuite =
+   env (return $ buildString reallyLong) $
+   \ ~(t) -> bgroup "PN Calculator"
+             [bench "Standard" $ nf tryBasicBin t,
+              bench "Optimized" $ nf tryOptBasicBin t]
+
+pnCalcTestSuite :: TestTree
+pnCalcTestSuite = testGroup "PN Calculator"
+                  []
