@@ -39,26 +39,31 @@ instance (Pretty v) => Show (Query v) where
    show = render . pPrint
 
 query :: (Eq v, Pretty v)
-         => Integer
+         => Int
+         -> Integer
          -> HLProg v VarId
          -> Term v VarId
          -> Query v
-query n p t
+query d n p t
    | n < 0 = impossible "n must be greater than or equal to 0!"
    | otherwise = case results of
    [] -> QueryNo t
-   xs -> QueryYes t xs
+   xs -> QueryYes t (take d xs)
    where
       results = do
          let (_, s) = fresh n (empty :: SubstEnv v VarId)
          (_, env) <- runStateT (action p t) s
          let vals = fmap
-                    (\k -> (k, fromMaybe
-                               (impossible "lkup failure!")
-                               $ env `lkup` k))
+                    (\k -> (k, instantiateTerm (instFn env)
+                                  (fromMaybe
+                                  (impossible "lkup failure!")
+                                  $ env `lkup` k)))
                     [0 .. n - 1]
          return vals
-
+         where
+            instFn :: SubstEnv v VarId -> Integer -> Term v VarId
+            instFn env i = fromMaybe (UVar i)
+                           $ fmap (instantiateTerm $ instFn env) (env `lkup` i)
 
 action :: (Eq v, Pretty v)
           => HLProg v VarId

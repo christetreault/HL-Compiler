@@ -56,7 +56,7 @@ ruleO = Rule { ruleVars = 0,
 evenOddTac = fromJust $ makeProg fnMap entryPoint
    where
       entryPoint = "evenOdd"
-      tacs = [HLApply ruleEO, HLApply ruleOE, HLApply ruleO]
+      tacs = [HLApply ruleO, HLApply ruleEO, HLApply ruleOE]
       fnMap = Map.fromList
                  [(entryPoint,
                    HLSeq (hlFirst tacs)

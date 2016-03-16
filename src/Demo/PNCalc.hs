@@ -69,14 +69,14 @@ reallyLong = "+1+1++11+++111++11++11+1++11+++111+1+1++11+1+1++11+1+1+11"
 
 
 unifyPrefix s = isRec $ isCons (UVar 0) (buildString s)
-testUnifyPrefix s = query 1 basicBinAdd (unifyPrefix s)
+testUnifyPrefix s = query 100 1 basicBinAdd (unifyPrefix s)
 
 unifyPrefix2 s = isRec $ isCons (UVar 0) (isCons (UVar 1) (buildString s))
-testUnifyPrefix2 s = query 2 basicBinAdd (unifyPrefix2 s)
+testUnifyPrefix2 s = query 100 2 basicBinAdd (unifyPrefix2 s)
 
 unifySuffix2 = isRec
                $ isCons (isChar '+') (isCons (UVar 0) (isCons (UVar 1) (isNil)))
-testUnifySuffix2 = query 2 basicBinAdd unifySuffix2
+testUnifySuffix2 = query 100 2 basicBinAdd unifySuffix2
 
 rec1 = recN '1'
 rec2 = recN '2'
@@ -103,10 +103,10 @@ buildString (s:xs) = isCons (isChar s) (buildString xs)
 basicBinAdd = fromJust $ makeProg fnMap entryPoint
    where
       entryPoint = "isBinAdd"
-      tacs = [HLApply recPlus,
-              HLApply rec1,
+      tacs = [HLApply rec1,
               HLApply rec0,
-              HLApply recNil]
+              HLApply recNil,
+              HLApply recPlus]
       fnMap = Map.fromList
               [(entryPoint,
                 hlFirst [ HLSeq x $ HCAll $ HLCall entryPoint | x <- tacs ])]
