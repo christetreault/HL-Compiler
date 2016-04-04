@@ -9,6 +9,7 @@ import Term
 import Control.Monad.State
 import Text.PrettyPrint.HughesPJClass hiding (empty)
 import Data.Maybe (fromMaybe)
+import Control.Monad.Logic
 
 data Query v =
    QueryNo (Term v VarId)
@@ -39,17 +40,17 @@ instance (Pretty v) => Show (Query v) where
    show = render . pPrint
 
 query :: (Eq v, Pretty v)
-         => Int
+         => Maybe Int
          -> Integer
          -> HLProg v VarId
          -> Term v VarId
          -> Query v
-query d n p t
-   | n < 0 = impossible "n must be greater than or equal to 0!"
-   | otherwise = case results of
+query d n p t = case (observer d) results of
    [] -> QueryNo t
-   xs -> QueryYes t (take d xs)
+   xs -> QueryYes t xs
    where
+      observer (Nothing) = observeAll
+      observer (Just n') = observeMany n'
       results = do
          let (_, s) = fresh n (empty :: SubstEnv v VarId)
          (_, env) <- runStateT (action p t) s
@@ -68,5 +69,5 @@ query d n p t
 action :: (Eq v, Pretty v)
           => HLProg v VarId
           -> Term v VarId
-          -> StateT (SubstEnv v VarId) [] [Term v VarId]
-action p t = compileList p t
+          -> StateT (SubstEnv v VarId) Logic [Term v VarId]
+action p t = compile p t

@@ -48,7 +48,7 @@ tryTac t p = evalStateT (action (isRec t)) empty
       action :: Term CalcTerm VarId
                 -> StateT (SubstEnv CalcTerm VarId)
                    [] [Term CalcTerm VarId]
-      action = compileList p
+      action = compile p
 
 isRec t = App CTRec [t]
 isCons l r = App CTCons [l, r]
@@ -69,14 +69,14 @@ reallyLong = "+1+1++11+++111++11++11+1++11+++111+1+1++11+1+1++11+1+1+11"
 
 
 unifyPrefix s = isRec $ isCons (UVar 0) (buildString s)
-testUnifyPrefix s = query 100 1 basicBinAdd (unifyPrefix s)
+testUnifyPrefix s = query (Just 100) 1 basicBinAdd (unifyPrefix s)
 
 unifyPrefix2 s = isRec $ isCons (UVar 0) (isCons (UVar 1) (buildString s))
-testUnifyPrefix2 s = query 100 2 basicBinAdd (unifyPrefix2 s)
+testUnifyPrefix2 s = query (Just 100) 2 basicBinAdd (unifyPrefix2 s)
 
 unifySuffix2 = isRec
                $ isCons (isChar '+') (isCons (UVar 0) (isCons (UVar 1) (isNil)))
-testUnifySuffix2 = query 100 2 basicBinAdd unifySuffix2
+testUnifySuffix2 = query (Just 100) 2 basicBinAdd unifySuffix2
 
 rec1 = recN '1'
 rec2 = recN '2'

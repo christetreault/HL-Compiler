@@ -21,12 +21,12 @@ tac_evenOdd t = tac t evenOddTac
 tac_evenOddMan t = tac t evenOddTacOpt
 tac_evenOddOpt t = tac t $ normalizeProg evenOddTac
 
-tac :: Term Integer VarId -> HLProg Integer VarId ->Maybe [Term Integer VarId]
+tac :: Term Integer VarId -> HLProg Integer VarId -> [] [Term Integer VarId]
 tac t p = evalStateT (action t) empty
    where
       action :: Term Integer VarId
-                -> StateT (SubstEnv Integer VarId) Maybe [Term Integer VarId]
-      action = compileMaybe p
+                -> StateT (SubstEnv Integer VarId) [] [Term Integer VarId]
+      action = compile p
 
 
 mkEven t = App 0 [t]
@@ -56,7 +56,7 @@ ruleO = Rule { ruleVars = 0,
 evenOddTac = fromJust $ makeProg fnMap entryPoint
    where
       entryPoint = "evenOdd"
-      tacs = [HLApply ruleO, HLApply ruleEO, HLApply ruleOE]
+      tacs = [HLApply ruleEO, HLApply ruleOE, HLApply ruleO]
       fnMap = Map.fromList
                  [(entryPoint,
                    HLSeq (hlFirst tacs)
@@ -108,16 +108,16 @@ evenOddTestSuite =
       posEven a = (>= (0 :: Integer))
                   ==> \n -> case (n `mod` 2 :: Integer) of
                                0 -> (tac_evenOdd (mkEven $ mkN n))
-                                    == Just []
+                                    == [[]]
                                1 -> (tac_evenOdd (mkEven $ mkN n))
-                                    == Nothing
+                                    == []
       posOdd :: Integer -> Property IO
       posOdd a = (>= (0 :: Integer))
                  ==> \n -> case (n `mod` 2 :: Integer) of
                               1 -> (tac_evenOdd (mkOdd $ mkN n))
-                                   == Just []
+                                   == [[]]
                               0 -> (tac_evenOdd (mkOdd $ mkN n))
-                                   == Nothing
+                                   == []
       succNotSame :: Integer -> Property IO
       succNotSame a = (>= (0 :: Integer))
                       ==> \n -> (tac_evenOdd (mkEven $ mkN (n :: Integer)))
