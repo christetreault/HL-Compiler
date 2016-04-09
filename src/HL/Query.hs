@@ -39,6 +39,16 @@ instance (Pretty v) => Pretty (Query v) where
 instance (Pretty v) => Show (Query v) where
    show = render . pPrint
 
+unifies :: (Eq v, Pretty v)
+           => HLProg v VarId
+           -> Term v VarId
+           -> Bool
+unifies p t = case result of
+   QueryYes _ _ -> True
+   _ -> False
+   where
+      result = query Nothing 0 p t
+
 query :: (Eq v, Pretty v)
          => Maybe Int
          -> Integer

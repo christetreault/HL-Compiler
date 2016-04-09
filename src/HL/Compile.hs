@@ -16,8 +16,6 @@ import Control.Monad.Logic.Class
 import qualified Data.Map as Map
 import Text.PrettyPrint.HughesPJClass
 
-import Debug.Trace
-
 -- The executable type of a tactic (Tactic) and a tactic continuation (TacticK)
 -- In both cases, [m] should be a Monad with
 -- 1) A State of [s] such that [Subst s v]
@@ -44,7 +42,7 @@ compile prg =
 compileHl :: (Ord f, Eq v, Eq val, Show f, Pretty f, Show v, Subst v (Term val v) s,
               Monad m, MonadLogic m, MonadState s m, MonadPlus m, Show s, Pretty v, Pretty val)
              => HL val v f -> Map.Map f (Tactic m val v) -> Tactic m val v
-compileHl (HLApply r) _ = trace ("hl apply" ++ show r) $ \gl -> do
+compileHl (HLApply r) _ = \gl -> do
    s <- get
    let (l, s') = fresh (ruleVars r) s
    let v2u = varsToUVars (\y -> UVar (l !! fromIntegral y))
@@ -52,25 +50,25 @@ compileHl (HLApply r) _ = trace ("hl apply" ++ show r) $ \gl -> do
    s'' <- fnUnify concl gl s'
    put s''
    sequence $ fmap (\a -> instantiate $ v2u a) (rulePrems r)
-compileHl (HLCall name) env = trace "hl call" $
+compileHl (HLCall name) env =
     case name `Map.lookup` env of
       Nothing -> impossible ("HLCall: " ++ show name ++ " undefined!")
       Just tac -> tac
-compileHl HLFail _ = trace "hl fail" $ \_ -> mzero
-compileHl HLIdTac _ = trace "hl id tac" $ \gl -> return [gl]
-compileHl (HLOr lhs rhs) env = trace "hl or" $
+compileHl HLFail _ = \_ -> mzero
+compileHl HLIdTac _ = \gl -> return [gl]
+compileHl (HLOr lhs rhs) env =
    compileHl (HLOnce $ HLPlus lhs rhs) env
-compileHl (HLPlus lhs rhs) env = trace "hl plus:"  $
+compileHl (HLPlus lhs rhs) env =
    let lhsT = compileHl lhs env in
    let rhsT = compileHl rhs env in
    \gl -> interleave (lhsT gl) (rhsT gl)
-compileHl (HLOnce h) env = trace "hl once" $ \gl -> once $ compileHl h env gl
-compileHl (HLSeq lhs rhs) env = trace "hl seq" $
+compileHl (HLOnce h) env = \gl -> once $ compileHl h env gl
+compileHl (HLSeq lhs rhs) env =
    let lhsT = compileHl lhs env in
    let rhsT = compileHc rhs env in
    \gl -> lhsT gl >>- rhsT
-compileHl (HLAssert _ hl) env = trace "hl assert" $ compileHl hl env
-compileHl (HLK hc) env = trace "hl K" $
+compileHl (HLAssert _ hl) env = compileHl hl env
+compileHl (HLK hc) env =
    let hcT = compileHc hc env in
    \gl -> hcT [gl]
 

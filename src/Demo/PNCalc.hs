@@ -3,7 +3,6 @@
 module Demo.PNCalc where
 
 import HL
-import HL.Compile
 import HL.Optimize
 import HL.Query
 import Control.Monad.State
@@ -36,19 +35,6 @@ instance Pretty CalcTerm where
    pPrint CTNil = text "Nil"
    pPrint (CTChar c) = quotes (pPrint c)
    pPrint (CTRecThen) = text "Recognized then"
-
-tryBasicBin = (flip tryTac) basicBinAdd
-tryOptBasicBin = (flip tryTac) $ normalizeProg basicBinAdd
-
-tryTac :: Term CalcTerm VarId
-          -> HLProg CalcTerm VarId
-          -> [[Term CalcTerm VarId]]
-tryTac t p = evalStateT (action (isRec t)) empty
-   where
-      action :: Term CalcTerm VarId
-                -> StateT (SubstEnv CalcTerm VarId)
-                   [] [Term CalcTerm VarId]
-      action = compile p
 
 isRec t = App CTRec [t]
 isCons l r = App CTCons [l, r]
@@ -100,6 +86,8 @@ buildString :: String -> Term CalcTerm VarId
 buildString [] = isNil
 buildString (s:xs) = isCons (isChar s) (buildString xs)
 
+recString = isRec . buildString
+
 basicBinAdd = fromJust $ makeProg fnMap entryPoint
    where
       entryPoint = "isBinAdd"
@@ -119,8 +107,8 @@ pnCalcBenchSuite :: Benchmark
 pnCalcBenchSuite =
    env (return $ buildString reallyLong) $
    \ ~(t) -> bgroup "PN Calculator"
-             [bench "Standard" $ nf tryBasicBin t,
-              bench "Optimized" $ nf tryOptBasicBin t]
+             [bench "Standard" $ nf (basicBinAdd `unifies`) t,
+              bench "Optimized" $ nf ((normalizeProg basicBinAdd) `unifies`) t]
 
 pnCalcTestSuite :: TestTree
 pnCalcTestSuite = testGroup "PN Calculator"
@@ -132,9 +120,9 @@ pnCalcTestSuite = testGroup "PN Calculator"
                    testCase "+(?0)(?1) query success" testQuery
                   ]
    where
-      testEmpty = (tryBasicBin $ buildString "") @?= []
-      testChar c = (tryBasicBin $ buildString [c]) @?= [[]]
-      testAdd = (tryBasicBin $ buildString "++111") @?= [[]]
-      testRL = (tryBasicBin $ buildString reallyLong) @?= [[]]
+      testEmpty = (basicBinAdd `unifies` (recString "")) @?= False
+      testChar c = (basicBinAdd `unifies` (recString [c])) @?= True
+      testAdd = (basicBinAdd `unifies` (recString "++111")) @?= True
+      testRL = (basicBinAdd `unifies` (recString reallyLong)) @?= True
       testQuery = let (QueryYes us2 solns) = testUnifySuffix2 in
                   (length solns, us2) @?= (4, unifySuffix2)
