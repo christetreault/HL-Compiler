@@ -1,0 +1,18 @@
+{
+  "vars" : 1,
+  "prems" : [
+    {
+      "id" : "odd",
+      "terms" : [{"var" : 0}]
+    }
+  ],
+  "conc" : {
+    "id" : "even",
+    "terms" : [
+      {
+        "id" : "succ",
+        "terms" : [{"var" : 0}]
+      }
+    ]
+  }
+}

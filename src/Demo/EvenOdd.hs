@@ -15,8 +15,6 @@ import Criterion.Main
 import Test.Tasty
 import Test.Tasty.SmallCheck
 
-
-
 tac_evenOdd t = tac t evenOddTac
 tac_evenOddMan t = tac t evenOddTacOpt
 tac_evenOddOpt t = tac t $ normalizeProg evenOddTac

@@ -50,18 +50,3 @@ instantiate a = do
           Nothing -> UVar u
           Just t -> t
    return $ instantiateTerm instFn a
-
-
-
-{-
-bindAll :: State t (Maybe [a]) -> [t] -> State t (Maybe [a])
-bindAll m states = return $ mconcat $ map (evalState m) states
-
-bindEach :: [State t (Maybe [a])] -> [t] -> State t (Maybe [a])
-bindEach ms states
-   | length ms /= length states = impossible "ms Length /= states length!"
-   | otherwise = return $ mconcat $  map mapper pairs
-      where
-         pairs = zip ms states
-         mapper = uncurry evalState
--}

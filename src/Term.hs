@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Term where
 
@@ -11,7 +12,8 @@ import Text.PrettyPrint.HughesPJClass
 import Util
 import Control.DeepSeq
 import GHC.Generics
-
+import Data.Aeson
+import Control.Monad
 
 type VarId = Integer
 
@@ -20,6 +22,17 @@ data Term b a =
    | Var VarId
    | UVar a
    deriving (Eq, Ord, Generic)
+
+instance (FromJSON b, FromJSON a) => FromJSON (Term b a) where
+   parseJSON (Object v) = parseVar `mplus` parseUVar `mplus` parseApp
+      where
+         parseApp = do
+            ident <- v .: "id"
+            terms <- v .: "terms"
+            return $ App ident terms
+         parseVar = Var <$> v .: "var"
+         parseUVar = UVar <$> v .: "uvar"
+   parseJSON _ = mzero
 
 instance (NFData a, NFData b) => NFData (Term a b)
 
@@ -44,6 +57,13 @@ data Rule b a =
           rulePrems :: [Term b a],
           ruleConcl :: Term b a}
    deriving (Eq, Ord)
+
+instance (FromJSON b, FromJSON a) => FromJSON (Rule b a) where
+   parseJSON (Object v) = Rule <$>
+                             ((v .: "vars") `mplus` (v .: "variables")) <*>
+                             ((v .: "prems") `mplus` (v .: "premises")) <*>
+                             ((v .: "conc") `mplus` (v .: "conclusion"))
+   parseJSON _ = mzero
 
 instance (Pretty b, Pretty a) => Show (Rule b a) where
    show = render . pPrint
