@@ -1,9 +1,15 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module HL where
 
 import Term
 import Util
 import qualified Data.Map as Map
 import Text.PrettyPrint.HughesPJClass
+import Data.Aeson
+import Control.Monad
+import qualified Data.Vector as V
+
 
 -- | A high-level program continuation
 data HC v b a =
@@ -12,6 +18,16 @@ data HC v b a =
    | HCIdTacK -- ^ Identity; succeed and do nothing
    | HCFailK -- ^ Fail and do nothing
    deriving (Eq, Ord)
+
+instance (FromJSON v, FromJSON b, FromJSON a) => FromJSON (HC v b a) where
+   parseJSON (Object v) = parseAll `mplus` parseEach
+      where
+         parseAll = HCAll <$> v .: "all"
+         parseEach = HCEach <$> v .: "each"
+   parseJSON (String v) = case v of
+      "id" -> return HCIdTacK
+      "fail" -> return HCFailK
+      _ -> mzero
 
 instance (Pretty v, Pretty b, Pretty a) => Show (HC v b a) where
    show = render . pPrint
@@ -31,6 +47,38 @@ data HL v b a =
    | HLAssert (Term v b) (HL v b a) -- ^ Assertion (currently unused)
    | HLK (HC v b a) -- ^ Lift a continuation to a tactic
    deriving (Eq, Ord)
+
+instance (FromJSON v, FromJSON b, FromJSON a) => FromJSON (HL v b a) where
+   parseJSON (Object v) = parseApply
+                          `mplus` parseCall
+                          `mplus` parseOr
+                          `mplus` parsePlus
+                          `mplus` parseOnce
+                          `mplus` parseSeq
+                          `mplus` parseAssert
+                          `mplus` parseK
+      where
+         parseApply = HLApply <$> v .: "apply"
+         parseCall = HLCall <$> v .: "call"
+         parseOnce = HLOnce <$> v .: "once"
+         parseAssert = HLAssert <$> v .: "assert"
+                                <*> v .: "over"
+         parseK = HLK <$> v .: "toTac"
+         parseSeq = HLSeq <$> v .: "seq" <*> v .: "over"
+         parseChain ctor name = do
+            p <- v .: name
+            guard (length p > 1)
+            p' <- sequence $ V.toList $ fmap parseJSON p
+            return $ mconcatWith ctor p'
+         mconcatWith _ [x] = x
+         mconcatWith ctor (x:xs) = ctor x $ mconcatWith ctor xs
+         parseOr = parseChain HLOr "or"
+         parsePlus = parseChain HLPlus "plus"
+   parseJSON (String v) = case v of
+      "id" -> return HLIdTac
+      "fail" -> return HLFail
+      _ -> mzero
+
 
 instance (Pretty v, Pretty b, Pretty a) => Show (HL v b a) where
    show = render . pPrint
