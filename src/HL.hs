@@ -184,6 +184,23 @@ data HLProg v a =
             progFns :: Map.Map Integer (HL v a Integer)
           }
 
+instance (FromJSON v, FromJSON a) => FromJSON (HLProg v a) where
+   parseJSON (Object v) = do
+     entry <- (v .: "entrypoint") `mplus` (v .: "entry")
+     funcs <- do
+        fns <- (v .: "fns") `mplus` (v .: "funcs") `mplus` (v .: "functions")
+        fnList <- sequence $  fmap pairs $ V.toList fns
+        return $ Map.fromList fnList
+     case (makeProg funcs entry) of
+         Just p -> return p
+         Nothing -> mzero
+      where
+         pairs (Object v) = do
+            name <- v .: "name"
+            body <- v .: "body"
+            return (name, body)
+         pairs _ = mzero
+
 instance (Pretty v, Pretty a) => Show (HLProg v a) where
    show = render . pPrint
 

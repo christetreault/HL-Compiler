@@ -16,3 +16,73 @@
     ]
   }
 }
+
+{
+  "entrypoint" : "evenOdd",
+  "functions" : [
+    {
+      "name" : "evenOdd",
+      "body" :
+      {
+        "seq" :
+        {
+          "plus" : [
+            { "apply" :
+              {
+                "vars" : 0,
+                "prems" : [],
+                "conc" : {
+                  "id" : "even",
+                  "terms" : [
+                    {
+                      "id" : "zero",
+                      "terms" : []
+                    }
+                  ]
+                }
+              } },
+            { "apply" :
+              {
+                "vars" : 1,
+                "prems" : [
+                  {
+                    "id" : "even",
+                    "terms" : [{"var" : 0}]
+                  }
+                ],
+                "conc" : {
+                  "id" : "odd",
+                  "terms" : [
+                    {
+                      "id" : "succ",
+                      "terms" : [{"var" : 0}]
+                    }
+                  ]
+                }
+              } },
+            { "apply" :
+              {
+                  "vars" : 1,
+                "prems" : [
+                  {
+                    "id" : "odd",
+                    "terms" : [{"var" : 0}]
+                  }
+                ],
+                "conc" : {
+                  "id" : "even",
+                  "terms" : [
+                    {
+                      "id" : "succ",
+                      "terms" : [{"var" : 0}]
+                    }
+                  ]
+                }
+              } }
+            ]
+        },
+        "over" : { "all" : { "call" : "evenOdd" } }
+      }
+    }
+  ]
+}
