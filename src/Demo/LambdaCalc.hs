@@ -10,17 +10,17 @@ definitions:
 
   λ - a function
   τ - type variable
-  Γ - ?
+  Γ - environment of variables in context
   ⊢ - P ⊢ Q --> "From P, I know that Q"
     P | Q | P ⊢ Q
     --+---+------
-    F | F |   ?
-    F | T |   ?
+    F | F |   T (vaccuously true)
+    F | T |   T (vaccuously true)
     T | F |   F
     T | T |   T
   . - function application
   : - a : b --> a is of type b
-  :: - cons? typo?
+  :: - cons (it is probably a bit more common to use the symbol ',')
   # - #n --> a variable n places to the left
 
 grammar:
