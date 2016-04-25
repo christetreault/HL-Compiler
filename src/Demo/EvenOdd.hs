@@ -8,7 +8,6 @@ import Term
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import Control.Monad.State
-import HL.Compile
 import HL.Optimize
 import HL.Query
 import Criterion.Main
@@ -16,23 +15,12 @@ import Test.Tasty
 import Test.Tasty.SmallCheck
 
 
-
-tac_evenOdd t = tac t evenOddTac
-tac_evenOddMan t = tac t evenOddTacOpt
-tac_evenOddOpt t = tac t $ normalizeProg evenOddTac
-
-tac :: Term Integer VarId -> HLProg Integer VarId ->Maybe [Term Integer VarId]
-tac t p = evalStateT (action t) empty
-   where
-      action :: Term Integer VarId
-                -> StateT (SubstEnv Integer VarId) Maybe [Term Integer VarId]
-      action = compileMaybe p
-
-
 mkEven t = App 0 [t]
 mkOdd t = App 1 [t]
 mkSucc t = App 2 [t]
 mkZero = App 3 []
+
+mkN :: Integer -> Term Integer Integer
 mkN n
    | n >= 0 = case n of
                  0 -> mkZero
@@ -56,7 +44,7 @@ ruleO = Rule { ruleVars = 0,
 evenOddTac = fromJust $ makeProg fnMap entryPoint
    where
       entryPoint = "evenOdd"
-      tacs = [HLApply ruleO, HLApply ruleEO, HLApply ruleOE]
+      tacs = [HLApply ruleEO, HLApply ruleOE, HLApply ruleO]
       fnMap = Map.fromList
                  [(entryPoint,
                    HLSeq (hlFirst tacs)
@@ -93,9 +81,9 @@ evenOddBenchSuite :: Benchmark
 evenOddBenchSuite =
    env (return $ mkEven $ mkN (10000 :: Integer)) $
    \ ~(t) -> bgroup "Even-Odd"
-             [bench "Standard" $ nf tac_evenOdd t,
-              bench "Manual" $ nf tac_evenOddMan t,
-              bench "Optimized" $ nf tac_evenOddOpt t]
+             [bench "Standard" $ nf (evenOddTac `unifies`) t,
+              bench "Manual" $ nf (evenOddTacOpt `unifies`) t,
+              bench "Optimized" $ nf ((normalizeProg evenOddTac) `unifies`) t]
 
 evenOddTestSuite :: TestTree
 evenOddTestSuite =
@@ -106,19 +94,17 @@ evenOddTestSuite =
    where
       posEven :: Integer -> Property IO
       posEven a = (>= (0 :: Integer))
-                  ==> \n -> case (n `mod` 2 :: Integer) of
-                               0 -> (tac_evenOdd (mkEven $ mkN n))
-                                    == Just []
-                               1 -> (tac_evenOdd (mkEven $ mkN n))
-                                    == Nothing
+                  ==> \n -> case n `mod` 2 of
+                               0 -> (evenOddTac `unifies` (mkEven $ mkN n))
+                               1 -> not (evenOddTac `unifies` (mkEven $ mkN n))
       posOdd :: Integer -> Property IO
       posOdd a = (>= (0 :: Integer))
-                 ==> \n -> case (n `mod` 2 :: Integer) of
-                              1 -> (tac_evenOdd (mkOdd $ mkN n))
-                                   == Just []
-                              0 -> (tac_evenOdd (mkOdd $ mkN n))
-                                   == Nothing
+                 ==> \n -> case n `mod` 2 of
+                              1 -> (evenOddTac `unifies` (mkOdd $ mkN n))
+                              0 -> not (evenOddTac `unifies` (mkOdd $ mkN n))
       succNotSame :: Integer -> Property IO
       succNotSame a = (>= (0 :: Integer))
-                      ==> \n -> (tac_evenOdd (mkEven $ mkN (n :: Integer)))
-                                /= (tac_evenOdd (mkEven $ mkSucc $ mkN n))
+                      ==> \n -> (evenOddTac `unifies` (mkEven
+                                                       $ mkN n))
+                                /= (evenOddTac `unifies` (mkEven
+                                                          $ mkSucc $ mkN n))

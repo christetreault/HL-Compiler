@@ -11,7 +11,7 @@ import Text.PrettyPrint.HughesPJClass
 import Util
 import Control.DeepSeq
 import GHC.Generics
-
+import Control.Monad
 
 type VarId = Integer
 
@@ -65,16 +65,18 @@ data SubstEnv b a =
 class Subst key val subst | subst -> key , subst -> val where
    fresh :: Integer -> subst -> ([key], subst)
    empty :: subst
-   lkup :: subst -> key -> Maybe val
-   inst :: key -> val -> subst -> Maybe subst
+   lkup :: (MonadPlus m) => subst -> key -> m val
+   inst :: (MonadPlus m) => key -> val -> subst -> m subst
 
 instance Subst VarId (Term val VarId) (SubstEnv val VarId) where
    fresh n (SubstEnv m i) = ([i .. (i + n)], SubstEnv m (i + n))
    empty = SubstEnv Map.empty 0
-   lkup (SubstEnv m _) k = Map.lookup k m
+   lkup (SubstEnv m _) k = case (Map.lookup k m) of
+      Nothing -> mzero
+      Just v -> return v
    inst k t (SubstEnv m i) = if k `Map.member` m
-                             then Nothing
-                             else Just $ SubstEnv (Map.insert k t m) i
+                             then mzero
+                             else return $ SubstEnv (Map.insert k t m) i
 
 instantiateTerm :: (a -> Term v a) -> Term v a -> Term v a
 instantiateTerm lf (App f xs) = App f $ fmap (instantiateTerm lf) xs
