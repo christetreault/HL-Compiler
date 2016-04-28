@@ -19,6 +19,7 @@ data Term b a =
    App b [Term b a]
    | Var VarId
    | UVar a
+   | Number Int -- For now
    deriving (Eq, Ord, Generic)
 
 instance (NFData a, NFData b) => NFData (Term a b)
