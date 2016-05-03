@@ -5,7 +5,8 @@ import Term
 
 import Test.Tasty
 import Criterion.Main
-
+import Debug.Trace
+import Text.PrettyPrint.HughesPJClass
 
 
 {-
@@ -34,9 +35,29 @@ e::= λ τ . e
 
 -}
 
-mkAbs f t e = App "abs" [t, e]
+termToInt :: TermInt -> Int
+termToInt = tti 0
+   where
+      tti n (App "zero" []) = n
+      tti n (App "succ" [t]) = tti (n + 1) t
+      tti _ _ = impossible "Must be a mkZero or mkSucc!"
+
+type TermInt = (Term String VarId)
+
+mkZero = App "zero" []
+mkSucc t = App "succ" [t]
+
+mkN :: Integer -> TermInt
+mkN n
+   | n >= 0 = case n of
+                 0 -> mkZero
+                 _ -> mkSucc $ mkN $ n - 1
+   | otherwise = impossible "n must be positive"
+
+
+mkAbs t e = App "abs" [t, e]
 mkApp e1 e2 = App "app" [e1, e2]
-mkVar n = App "var" [n]
+mkVar n = App "var" [mkN n]
 
 mkType t = App t []
 
@@ -71,19 +92,36 @@ nth Γ n τ
 ----------------------------------------------------------------------
 
 data TCResult =
-   Type String
-   | Free
-   | Error
+   Type (Term String VarId)
+   | Function (Term String VarId) TCResult
+   | Free Int
+   | Error TCResult TCResult
+     deriving (Ord, Eq, Show)
 
-typeCheck g (App "var" [Number n]) = if (length g >= n)
-                                        -- lookup the nth element of g
-                                     then undefined
-                                     else Free
-typeCheck g (App "app" [e1, e2]) = undefined
-                                   -- if e1 has a function type, result is
-                                   -- applying e2 to e1, otherwise error
-typecheck g (App "abs" [t, e]) = undefined
-                                 -- type is function from t -> [type of e]
+typeCheck t = typeCheck' [] t
+
+typeCheck' g (App "var" [n']) = --trace (show g) $
+   let n = termToInt n' in
+   if (length g > n)
+   then Type (g !! n)
+   else Free n
+typeCheck' g (App "app" [e1, e2]) = --trace (show g) $
+   let lhs = typeCheck' (e1:g) e1 in
+   let rhs = typeCheck' (e2:g) e2 in
+   case (lhs, rhs) of
+      ((Error _ _), rhs) -> Error lhs rhs
+      (lhs, (Error _ _)) -> Error lhs rhs
+      (f@(Function lhsT rhsT), Free _) -> f
+      (Function lhsT rhsT, (Type t)) ->
+         if lhsT == t
+         then rhsT
+         else Error (Function lhsT rhsT) (Type t)
+      _ -> Error lhs rhs
+typeCheck' g f@(App "abs" [t, e]) = --trace (show g) $
+   Function t (typeCheck' (f:g) e)
+typeCheck' g f = impossible ("Got:\n"
+                 ++ show (g) ++ "\n"
+                 ++ show f)
 
 --type Zipper = ([Branch], Term String VarId)
 
