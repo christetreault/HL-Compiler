@@ -5,7 +5,7 @@ version:             0.1.0.0
 license:             MIT
 license-file:        LICENSE
 author:              Gregory Malecha, Chris Tetreault
-maintainer:          gmalecha@eng.ucsd.edu, ctetreau@ucsd.edu
+maintainer:          gmalecha@cs.ucsd.edu, ctetreau@ucsd.edu
 -- copyright:
 category:            Language
 build-type:          Simple
@@ -14,7 +14,15 @@ cabal-version:       >=1.10
 
 executable cse199
   main-is:             Main.hs
-  -- other-modules:
+  other-modules:       HL
+                     , HL.Compile
+                     , HL.Optimize
+                     , HL.Query
+                     , Tactic
+                     , Term
+                     , Util
+                     , Demo.EvenOdd
+                     , Demo.PNCalc
   -- other-extensions:
   build-depends:       base >=4.8 && <4.9
                      , mtl >= 2.2 && < 2.3
@@ -35,6 +43,15 @@ test-suite test
   type:             exitcode-stdio-1.0
   hs-source-dirs:   src
   main-is:          Test.hs
+  other-modules:       HL
+                     , HL.Compile
+                     , HL.Optimize
+                     , HL.Query
+                     , Tactic
+                     , Term
+                     , Util
+                     , Demo.EvenOdd
+                     , Demo.PNCalc
   build-depends:    base >=4.8 && <4.9
                   , mtl >= 2.2 && < 2.3
                   , containers >= 0.5.6 && < 0.5.8
