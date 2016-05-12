@@ -3,11 +3,15 @@ module Demo.LambdaCalc where
 import Util
 import Term
 import Demo.Std
+import HL.Query
+import HL
 
+import Data.Maybe (fromJust)
 import Test.Tasty
 import Criterion.Main
 import Debug.Trace
 import Text.PrettyPrint.HughesPJClass
+import qualified Data.Map as Map
 
 
 {-
@@ -39,7 +43,7 @@ e::= λ τ . e
 -}
 
 
-mkAbs t e = App "abs" [(mkType t), e]
+mkAbs t e = App "abs" [t, e]
 mkType t = App t []
 mkApp e1 e2 = App "app" [e1, e2]
 mkVar n = App "var" [mkN n]
@@ -47,7 +51,7 @@ mkArr a b = App "arr" [a, b]
 mkHasType e t = App ":" [e, t]
 mkTurnstile g t = App "|-" [g, t]
 
-mkFn :: [String] -> Integer -> StringTerm
+mkFn :: [StringTerm] -> Integer -> StringTerm
 mkFn [] n = mkVar n
 mkFn (x:xs) n = mkAbs x (mkFn xs n)
 
@@ -100,9 +104,24 @@ ruleTApp = [mkTurnstile (Var 0) (mkHasType (Var 1) (mkArr (Var 2) (Var 3))),
            ==> mkTurnstile (Var 0) (mkHasType (mkApp (Var 1) (Var 5)) (Var 2))
 
 ruleTAbs = [mkTurnstile (mkCons (Var 1) (Var 0)) (mkHasType (Var 2) (Var 3))]
-           ==> mkTurnstile (Var 0) (mkHasType (mkAbs (show ((Var 1) :: StringTerm))
+           ==> mkTurnstile (Var 0) (mkHasType (mkAbs (Var 1)
                                                      (Var 2))
                                               (mkArr (Var 1) (Var 3)))
+
+ruleTConcrete = [] ==> mkType "a" -- what to do here?
+
+typecheck = fromJust $ makeProg fnMap entryPoint -- TODO: Basic form we have
+   where                                         -- been using no longer good
+      entryPoint = "typechecks"                  -- enough?
+      tacs = [ HLApply ruleNthZero,
+               HLApply ruleNth,
+               HLApply ruleTVar,
+               HLApply ruleTApp,
+               HLApply ruleTAbs ]
+      fnMap = Map.fromList
+              [(entryPoint,
+                hlFirst [ HLSeq x $HCAll $ HLCall entryPoint | x <- tacs ])]
+
 
 ----------------------------------------------------------------------
 -- Haskell implementation
@@ -113,27 +132,27 @@ data TCResult =
    | Error
      deriving (Ord, Eq, Show)
 
-typeCheck t = typeCheck' [] t
+hsTypeCheck t = hsTypeCheck' [] t
 
-typeCheck' g (App "var" [n']) =
+hsTypeCheck' g (App "var" [n']) =
    let n = termToInt n' in
    if (length g > n)
    then Type (g !! n)
    else Error {- Undefined variable -}
-typeCheck' g (App "app" [e1, e2]) =
-   let lhs = typeCheck' g e1 in
-   let rhs = typeCheck' g e2 in
+hsTypeCheck' g (App "app" [e1, e2]) =
+   let lhs = hsTypeCheck' g e1 in
+   let rhs = hsTypeCheck' g e2 in
    case (lhs, rhs) of
       (Type (App "arr" [d,r]), Type d') ->
          if d == d' then Type r
          else Error {- applied a function of type [a -> b] to a [c] -}
       (Type _ , Type _) -> Error {- e1 is not a function -}
       (_ , _) -> Error {- one of the subterms does not type check -}
-typeCheck' g f@(App "abs" [t, e]) =
-   case typeCheck' (t:g) e of
+hsTypeCheck' g f@(App "abs" [t, e]) =
+   case hsTypeCheck' (t:g) e of
       Type t' -> Type (mkArr t t')
       Error -> Error {- body does not type check -}
-typeCheck' g t = Type t
+hsTypeCheck' g t = Type t
 
 
 
