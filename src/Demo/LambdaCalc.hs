@@ -40,12 +40,14 @@ e::= λ τ . e
 
 
 mkAbs t e = App "abs" [(mkType t), e]
-   where
-      mkType t = App t []
-
+mkType t = App t []
 mkApp e1 e2 = App "app" [e1, e2]
 mkVar n = App "var" [mkN n]
 mkArr a b = App "arr" [a, b]
+
+mkFn :: [String] -> Integer -> StringTerm
+mkFn [] n = mkVar n
+mkFn (x:xs) n = mkAbs x (mkFn xs n)
 
 
 
@@ -82,12 +84,14 @@ nth Γ n τ
 
 -}
 
+
+
 ----------------------------------------------------------------------
 -- Haskell implementation
 ----------------------------------------------------------------------
 
 data TCResult =
-   Type (Term String VarId)
+   Type StringTerm
    | Error
      deriving (Ord, Eq, Show)
 
@@ -111,9 +115,7 @@ typeCheck' g f@(App "abs" [t, e]) =
    case typeCheck' (t:g) e of
       Type t' -> Type (mkArr t t')
       Error -> Error {- body does not type check -}
-typeCheck' g f = impossible ("Got:\n"
-                             ++ show (g) ++ "\n"
-                             ++ show f)
+typeCheck' g t = Type t
 
 
 

@@ -3,24 +3,48 @@ module Demo.Std where
 import Util
 import Term
 
-type TermInt = (Term String VarId)
+import Data.List (nub)
 
-termToInt :: TermInt -> Int
+type StringTerm = (Term String VarId)
+
+termToInt :: StringTerm -> Int
 termToInt = tti 0
    where
       tti n (App "zero" []) = n
       tti n (App "succ" [t]) = tti (n + 1) t
       tti _ _ = impossible "Must be a mkZero or mkSucc!"
 
-mkZero :: TermInt
+mkZero :: StringTerm
 mkZero = App "zero" []
 
-mkSucc :: TermInt -> TermInt
+mkSucc :: StringTerm -> StringTerm
 mkSucc t = App "succ" [t]
 
-mkN :: Integer -> TermInt
+mkN :: Integer -> StringTerm
 mkN n
    | n >= 0 = case n of
                  0 -> mkZero
                  _ -> mkSucc $ mkN $ n - 1
    | otherwise = impossible "n must be positive"
+
+mkNil :: StringTerm
+mkNil = App "nil" []
+
+mkCons :: StringTerm -> StringTerm -> StringTerm
+mkCons l r = App "cons" [l, r]
+
+mkList :: [StringTerm] -> StringTerm
+mkList [] = mkNil
+mkList (x:xs) = mkCons x $ mkList xs
+
+infixl 5 ==>
+prems ==> concl = Rule { ruleVars = (countVars prems concl),
+                         rulePrems = prems,
+                         ruleConcl = concl }
+
+countVars :: [StringTerm] -> StringTerm -> Integer
+countVars p c = toInteger $ length $ nub $ concat $ fmap getVars (c:p)
+   where
+      getVars (UVar _) = impossible "UVar in call to countVars!"
+      getVars (App _ ts) = concat $ fmap getVars ts
+      getVars v = [v]
