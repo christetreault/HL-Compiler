@@ -44,6 +44,8 @@ mkType t = App t []
 mkApp e1 e2 = App "app" [e1, e2]
 mkVar n = App "var" [mkN n]
 mkArr a b = App "arr" [a, b]
+mkHasType e t = App ":" [e, t]
+mkTurnstile g t = App "|-" [g, t]
 
 mkFn :: [String] -> Integer -> StringTerm
 mkFn [] n = mkVar n
@@ -85,6 +87,22 @@ nth Γ n τ
 -}
 
 
+ruleNthZero = [] ==> mkNth (Var 0) mkZero (Var 1)
+
+ruleNth = [mkNth (Var 0) (Var 1) (Var 2)]
+          ==> mkNth (mkCons (Var 3) (Var 0)) (mkSucc (Var 1)) (Var 2)
+
+ruleTVar = [mkNth (Var 0) (Var 1) (Var 2)]
+           ==> mkTurnstile (Var 0) (mkHasType (Var 1) (Var 2))
+
+ruleTApp = [mkTurnstile (Var 0) (mkHasType (Var 1) (mkArr (Var 2) (Var 3))),
+            mkTurnstile (Var 0) (mkHasType (Var 5) (Var 2))]
+           ==> mkTurnstile (Var 0) (mkHasType (mkApp (Var 1) (Var 5)) (Var 2))
+
+ruleTAbs = [mkTurnstile (mkCons (Var 1) (Var 0)) (mkHasType (Var 2) (Var 3))]
+           ==> mkTurnstile (Var 0) (mkHasType (mkAbs (show ((Var 1) :: StringTerm))
+                                                     (Var 2))
+                                              (mkArr (Var 1) (Var 3)))
 
 ----------------------------------------------------------------------
 -- Haskell implementation
