@@ -2,6 +2,7 @@ module Demo.LambdaCalc where
 
 import Util
 import Term
+import Demo.Std
 
 import Test.Tasty
 import Criterion.Main
@@ -29,37 +30,24 @@ definitions:
 
 grammar:
 
+tau ::= tau1 -> tau2
+      | ..
 e::= λ τ . e
    | e1 e2
    | #n
 
 -}
 
-termToInt :: TermInt -> Int
-termToInt = tti 0
+
+mkAbs t e = App "abs" [(mkType t), e]
    where
-      tti n (App "zero" []) = n
-      tti n (App "succ" [t]) = tti (n + 1) t
-      tti _ _ = impossible "Must be a mkZero or mkSucc!"
+      mkType t = App t []
 
-type TermInt = (Term String VarId)
-
-mkZero = App "zero" []
-mkSucc t = App "succ" [t]
-
-mkN :: Integer -> TermInt
-mkN n
-   | n >= 0 = case n of
-                 0 -> mkZero
-                 _ -> mkSucc $ mkN $ n - 1
-   | otherwise = impossible "n must be positive"
-
-
-mkAbs t e = App "abs" [t, e]
 mkApp e1 e2 = App "app" [e1, e2]
 mkVar n = App "var" [mkN n]
+mkArr a b = App "arr" [a, b]
 
-mkType t = App t []
+
 
 {-
 
@@ -71,6 +59,13 @@ examples:
 (in haskell: fun x y -> y
 
 rules:
+
+----------------
+nth (x:xs) O x
+
+nth xs n y
+-------------------
+nth (x:xs) (S n) y
 
 nth Γ n τ
 ---------- Tvar
@@ -93,43 +88,32 @@ nth Γ n τ
 
 data TCResult =
    Type (Term String VarId)
-   | Function (Term String VarId) TCResult
-   | Free Int
-   | Error TCResult TCResult
+   | Error
      deriving (Ord, Eq, Show)
 
 typeCheck t = typeCheck' [] t
 
-typeCheck' g (App "var" [n']) = --trace (show g) $
+typeCheck' g (App "var" [n']) =
    let n = termToInt n' in
    if (length g > n)
    then Type (g !! n)
-   else Free n
-typeCheck' g (App "app" [e1, e2]) = --trace (show g) $
-   let lhs = typeCheck' (e1:g) e1 in
-   let rhs = typeCheck' (e2:g) e2 in
+   else Error {- Undefined variable -}
+typeCheck' g (App "app" [e1, e2]) =
+   let lhs = typeCheck' g e1 in
+   let rhs = typeCheck' g e2 in
    case (lhs, rhs) of
-      ((Error _ _), rhs) -> Error lhs rhs
-      (lhs, (Error _ _)) -> Error lhs rhs
-      (f@(Function lhsT rhsT), Free _) -> f
-      (Function lhsT rhsT, (Type t)) ->
-         if lhsT == t
-         then rhsT
-         else Error (Function lhsT rhsT) (Type t)
-      _ -> Error lhs rhs
-typeCheck' g f@(App "abs" [t, e]) = --trace (show g) $
-   Function t (typeCheck' (f:g) e)
+      (Type (App "arr" [d,r]), Type d') ->
+         if d == d' then Type r
+         else Error {- applied a function of type [a -> b] to a [c] -}
+      (Type _ , Type _) -> Error {- e1 is not a function -}
+      (_ , _) -> Error {- one of the subterms does not type check -}
+typeCheck' g f@(App "abs" [t, e]) =
+   case typeCheck' (t:g) e of
+      Type t' -> Type (mkArr t t')
+      Error -> Error {- body does not type check -}
 typeCheck' g f = impossible ("Got:\n"
-                 ++ show (g) ++ "\n"
-                 ++ show f)
-
---type Zipper = ([Branch], Term String VarId)
-
---data Branch =
---   BinaryLHS
---   | BinaryRHS
---   | UnaryAbs
---   | UnaryVar
+                             ++ show (g) ++ "\n"
+                             ++ show f)
 
 
 
