@@ -90,8 +90,11 @@ nth Γ n τ
 
 -}
 
+basicTestTVar = mkTurnstile (mkNth (mkList [mkType "foo"]) mkZero (mkType "foo")) (mkHasType (mkVar 0) (mkType "foo"))
 
-ruleNthZero = [] ==> mkNth (Var 0) mkZero (Var 1)
+
+
+ruleNthZero = [] ==> mkNth (mkCons (Var 1) (Var 0)) mkZero (Var 1)
 
 ruleNth = [mkNth (Var 0) (Var 1) (Var 2)]
           ==> mkNth (mkCons (Var 3) (Var 0)) (mkSucc (Var 1)) (Var 2)
@@ -108,19 +111,31 @@ ruleTAbs = [mkTurnstile (mkCons (Var 1) (Var 0)) (mkHasType (Var 2) (Var 3))]
                                                      (Var 2))
                                               (mkArr (Var 1) (Var 3)))
 
-ruleTConcrete = [] ==> mkType "a" -- what to do here?
-
-typecheck = fromJust $ makeProg fnMap entryPoint -- TODO: Basic form we have
-   where                                         -- been using no longer good
-      entryPoint = "typechecks"                  -- enough?
-      tacs = [ HLApply ruleNthZero,
-               HLApply ruleNth,
-               HLApply ruleTVar,
-               HLApply ruleTApp,
-               HLApply ruleTAbs ]
+typecheck = fromJust $ makeProg fnMap ep
+   where
+      ep = "typechecks"
+      epDef = hlFirst [ HLSeq x
+                        $ HCAll
+                        $ HLCall ep | x <- cases ]
+      nth = "nth"
+      nthDef = HLSeq (hlFirst [HLApply ruleNth, HLApply ruleNthZero])
+                     (HCAll $ HLCall nth)
+      tVar = "TVar"
+      tVarDef = HLSeq (HLCall nth)
+                      (HCAll $ HLApply ruleTVar)
+      tApp = "TApp"
+      tAppDef = HLFail
+      tAbs = "TAbs"
+      tAbsDef = HLFail
+      cases = [ HLCall tVar,
+                HLCall tApp,
+                HLCall tAbs]
       fnMap = Map.fromList
-              [(entryPoint,
-                hlFirst [ HLSeq x $HCAll $ HLCall entryPoint | x <- tacs ])]
+              [(ep, epDef),
+               (tVar, tVarDef),
+               (tApp, tAppDef),
+               (tAbs, tAbsDef),
+               (nth, nthDef)]
 
 
 ----------------------------------------------------------------------
@@ -152,7 +167,7 @@ hsTypeCheck' g f@(App "abs" [t, e]) =
    case hsTypeCheck' (t:g) e of
       Type t' -> Type (mkArr t t')
       Error -> Error {- body does not type check -}
-hsTypeCheck' g t = Type t
+hsTypeCheck' _ _ = Error -- otherwise (I assume)
 
 
 
