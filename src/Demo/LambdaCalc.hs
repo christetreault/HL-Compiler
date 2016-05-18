@@ -48,8 +48,8 @@ mkType t = App t []
 mkApp e1 e2 = App "app" [e1, e2]
 mkVar n = App "var" [mkN n]
 mkArr a b = App "arr" [a, b]
-mkHasType e t = App ":" [e, t]
-mkTurnstile g t = App "|-" [g, t]
+mkHasType e t = App ":" [e, t] ----- \
+mkTurnstile g t = App "|-" [g, t] -- + -- collapse into one ternary constructor
 
 mkFn :: [StringTerm] -> Integer -> StringTerm
 mkFn [] n = mkVar n
@@ -90,7 +90,7 @@ nth Γ n τ
 
 -}
 
-basicTestTVar = mkTurnstile (mkNth (mkList [mkType "foo"]) mkZero (mkType "foo")) (mkHasType (mkVar 0) (mkType "foo"))
+basicTestTVar = mkNth (mkList [mkType "foo"]) mkZero (mkType "foo")
 
 
 
@@ -111,7 +111,11 @@ ruleTAbs = [mkTurnstile (mkCons (Var 1) (Var 0)) (mkHasType (Var 2) (Var 3))]
                                                      (Var 2))
                                               (mkArr (Var 1) (Var 3)))
 
-typecheck = fromJust $ makeProg fnMap ep
+ruleGCons = [mkTurnstile (Var 0) (Var 1), (Var 3)]
+            ==> mkTurnstile (mkCons (Var 3) (Var 0)) (Var 4)
+
+typecheck = fromJust $ makeProg fnMap ep -- need to solve from bottom up,
+                                         -- not top down
    where
       ep = "typechecks"
       epDef = hlFirst [ HLSeq x
@@ -126,7 +130,9 @@ typecheck = fromJust $ makeProg fnMap ep
       tApp = "TApp"
       tAppDef = HLFail
       tAbs = "TAbs"
-      tAbsDef = HLFail
+      tAbsDef = HLSeq (HLApply ruleGCons)
+                      (HCAll $ HLSeq (HLCall ep)
+                                     (HCAll $ HLApply ruleTVar))
       cases = [ HLCall tVar,
                 HLCall tApp,
                 HLCall tAbs]

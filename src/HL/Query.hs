@@ -10,6 +10,8 @@ import Control.Monad.State
 import Text.PrettyPrint.HughesPJClass hiding (empty)
 import Data.Maybe (fromMaybe)
 import Control.Monad.Logic
+import Control.Monad.Identity
+import HL.InterleavedTactic
 
 data Query v =
    QueryNo (Term v VarId)
@@ -49,18 +51,19 @@ unifies p t = case result of
    where
       result = query Nothing 0 p t
 
-query :: (Eq v, Pretty v)
+query :: (Eq v, Pretty v) -- TODO: what if user queries a term with no uvars?
          => Maybe Int
          -> Integer
          -> HLProg v VarId
          -> Term v VarId
          -> Query v
-query d n p t = case (observer d) results of
+query d n p t = case runIdentity $ observer d results of
    [] -> QueryNo t
    xs -> QueryYes t xs
    where
-      observer (Nothing) = observeAll
-      observer (Just n') = observeMany n'
+      observer (Nothing) = observeAllStreamT
+      observer (Just n') = observeManyStreamT n'
+
       results = do
          let (_, s) = fresh n (empty :: SubstEnv v VarId)
          (_, env) <- runStateT (action p t) s
@@ -79,5 +82,5 @@ query d n p t = case (observer d) results of
 action :: (Eq v, Pretty v)
           => HLProg v VarId
           -> Term v VarId
-          -> StateT (SubstEnv v VarId) Logic [Term v VarId]
+          -> StateT (SubstEnv v VarId) (StreamT Identity) [Term v VarId]
 action p t = compile p t

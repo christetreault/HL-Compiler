@@ -25,7 +25,7 @@ type TacticK m v s = [Term v s] -> m [Term v s]
 
 -- Compile a program
 compile :: (Subst VarId (Term v VarId) s, Eq v,
-            Monad m, MonadLogic m, MonadState s m, MonadPlus m, Show s, Pretty v)
+            Monad m, MonadLogic m, MonadState s m, MonadPlus m, Pretty v)
            => HLProg v VarId
            -> Tactic m v VarId
 compile prg =
@@ -40,7 +40,7 @@ compile prg =
 
 -- Compile a tactic given the environment of defined tactics
 compileHl :: (Ord f, Eq v, Eq val, Show f, Pretty f, Show v, Subst v (Term val v) s,
-              Monad m, MonadLogic m, MonadState s m, MonadPlus m, Show s, Pretty v, Pretty val)
+              Monad m, MonadLogic m, MonadState s m, MonadPlus m, Pretty v, Pretty val)
              => Map.Map f (Tactic m val v) -> HL val v f -> Tactic m val v
 compileHl _ (HLApply r) = \gl -> do
    s <- get
@@ -76,7 +76,7 @@ compileHl env (HLK hc) =
 
 -- Compile a tactic continuation given the environment of defined tactics
 compileHc :: (Ord f, Eq v, Eq val, Show f, Pretty f, Show v, Subst v (Term val v) s,
-              Monad m, MonadState s m, MonadPlus m, MonadLogic m, Show s, Pretty val, Pretty v)
+              Monad m, MonadState s m, MonadPlus m, MonadLogic m, Pretty val, Pretty v)
              => Map.Map f (Tactic m val v)
              -> HC val v f
              -> TacticK m val v

@@ -5,3 +5,6 @@ todo m = error $ "TODO: " ++ m
 
 impossible :: String -> a
 impossible m = error $ "This should never happen: " ++ m
+
+userError :: String -> a
+userError m = error $ "User error: " ++ m

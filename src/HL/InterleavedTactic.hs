@@ -5,7 +5,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module HL.Compile where
+module HL.InterleavedTactic where
 
 import GHC.Base (Alternative,(<|>),empty)
 import Control.Monad (MonadPlus)
@@ -97,7 +97,7 @@ instance Monad m => GHC.Base.Alternative (StreamT m) where
     StreamT x <|> y = StreamT $ do x' <- x
                                    interleaveStreamT' x' y
 
-instance MonadPlus m => MonadPlus (StreamT m) where
+instance Monad m => MonadPlus (StreamT m) where
 
 splitStreamT' :: Monad m => StreamT' m a -> StreamT' m (Maybe (a, StreamT m a))
 splitStreamT' Done = Yield Nothing $ StreamT $ return Done
@@ -105,6 +105,28 @@ splitStreamT' (Yield x y) = Yield (Just (x, StreamT $ return $ Delay y)) $ Strea
 splitStreamT' (Delay y) = Delay $ StreamT $ do y' <- unStreamT y
                                                return $ splitStreamT' y'
 
-instance MonadLogic m => MonadLogic (StreamT m) where
+instance Monad m => MonadLogic (StreamT m) where
     msplit (StreamT x) = StreamT $ do x' <- x
                                       return $ splitStreamT' x'
+
+observeAllStreamT :: Monad m => StreamT m a -> m [a]
+observeAllStreamT x = do x <- unStreamT x
+                         case x of
+                            Done -> return []
+                            Yield v k ->
+                               fmap (\x -> v : x) $ observeAllStreamT k
+                            Delay k -> observeAllStreamT k
+
+observeManyStreamT :: Monad m => Int -> StreamT m a -> m [a]
+observeManyStreamT i x | i <= 0 = return []
+observeManyStreamT i x = do x <- unStreamT x
+                            case x of
+                               Done -> return []
+                               Yield v k ->
+                                  fmap (\x -> v : x) $ observeManyStreamT (i - 1) k
+                               Delay k -> observeManyStreamT i k
+
+   {-
+do xs <- observeAllStreamT x
+                            return $ take i xs
+-}

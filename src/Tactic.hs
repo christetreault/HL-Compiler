@@ -8,7 +8,7 @@ import Control.Monad
 import Control.Monad.State
 import Control.Monad.Logic
 
-fnUnify :: (Subst a (Term v a) s, Eq a, Eq v, Show a, Show s,
+fnUnify :: (Subst a (Term v a) s, Eq a, Eq v, Show a,
             MonadPlus m, MonadLogic m)
            => Term v a -> Term v a -> s -> m s
 fnUnify (App f xs) (App g ys) s
