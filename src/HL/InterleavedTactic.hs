@@ -4,29 +4,34 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module HL.InterleavedTactic where
 
 import GHC.Base (Alternative,(<|>),empty)
 import Control.Monad (MonadPlus)
 import Control.Monad.Logic.Class
+import Control.Monad.State.Class
+import Control.Monad.Trans
+import Debug.Trace (trace)
 
-data StreamT' m a =
+data Stream a =
     Done
-  | Yield a (StreamT m a)
-  | Delay (StreamT m a)
-newtype StreamT m a = StreamT (m (StreamT' m a))
+  | Yield a (Stream a)
+  | Delay (Stream a)
+newtype StreamS s a = StreamS (s -> Stream (a,s))
 
-unStreamT (StreamT x) = x
+unStreamS (StreamS x) = x
 
-instance Functor m => Functor (StreamT' m) where
+instance Functor m => Functor (Stream m) where
     fmap f Done = Done
     fmap f (Yield x xs) = Yield (f x) $ fmap f xs
     fmap f (Delay xs) = Delay $ fmap f xs
 
-instance Functor m => Functor (StreamT m) where
-    fmap f (StreamT x) = StreamT $ fmap (fmap f) x
+instance Functor m => Functor (StreamS s m) where
+    fmap f (StreamS x) = StreamS $ fmap (fmap f) x
 
+{-
 joinStreamT' :: Applicative m => StreamT' m (a -> b) -> StreamT' m a -> StreamT' m b
 joinStreamT' Done _ = Done
 joinStreamT' _ Done = Done
@@ -46,17 +51,19 @@ joinStreamT' (Delay (StreamT fs)) (Yield x xs) = Delay $ StreamT $ fmap (joinLef
 
 joinStreamT :: Applicative m => StreamT m (a -> b) -> StreamT m a -> StreamT m b
 joinStreamT (StreamT x) (StreamT y) = StreamT $ fmap joinStreamT' x <*> y
+-}
 
 instance Applicative m => Applicative (StreamT' m) where
-    pure x = Yield x $ StreamT $ pure Done
+    pure x = Yield (pure x) $ StreamT $ pure Done
 
-    x <*> y = joinStreamT' x y
+    x <*> y = undefined {- joinStreamT' x y -}
 
 instance Applicative m => Applicative (StreamT m) where
     pure x = StreamT $ pure $ pure x
 
-    x <*> y = joinStreamT x y
+    x <*> y = undefined {- $ joinStreamT x y -}
 
+{-
 appendStreamT' :: Monad m => StreamT' m a -> StreamT m a -> m (StreamT' m a)
 appendStreamT' Done ys = unStreamT ys
 appendStreamT' (Yield x xs) ys =
@@ -65,19 +72,21 @@ appendStreamT' (Yield x xs) ys =
 appendStreamT' (Delay xs) ys =
     return $ Delay $ StreamT $ do xs' <- unStreamT xs
                                   appendStreamT' xs' ys
+-}
 
 flatMapStreamT' :: Monad m => StreamT' m a -> (a -> StreamT m b) -> m (StreamT' m b)
 flatMapStreamT' Done _ = return Done
 flatMapStreamT' (Yield x xs) ys =
-    do x' <- unStreamT $ ys x
-       appendStreamT' x' $ StreamT $ do xs' <- unStreamT xs
-                                        flatMapStreamT' xs' ys
+    do x <- x
+       x' <- unStreamT $ ys x
+       interleaveStreamT' x' $ StreamT $ do xs' <- unStreamT xs
+                                            flatMapStreamT' xs' ys
 flatMapStreamT' (Delay xs) ys =
     return $ Delay $ StreamT $ do xs' <- unStreamT xs
                                   flatMapStreamT' xs' ys
 
 instance Monad m => Monad (StreamT m) where
-    return x = pure x
+    return = pure
 
     StreamT c >>= k = StreamT $ do x <- c
                                    flatMapStreamT' x k
@@ -100,8 +109,9 @@ instance Monad m => GHC.Base.Alternative (StreamT m) where
 instance Monad m => MonadPlus (StreamT m) where
 
 splitStreamT' :: Monad m => StreamT' m a -> StreamT' m (Maybe (a, StreamT m a))
-splitStreamT' Done = Yield Nothing $ StreamT $ return Done
-splitStreamT' (Yield x y) = Yield (Just (x, StreamT $ return $ Delay y)) $ StreamT $ return Done
+splitStreamT' Done = Yield (return Nothing) $ StreamT $ return Done
+splitStreamT' (Yield x y) = Yield (do x <- x
+                                      return $ Just (x, StreamT $ return $ Delay y)) $ StreamT $ return Done
 splitStreamT' (Delay y) = Delay $ StreamT $ do y' <- unStreamT y
                                                return $ splitStreamT' y'
 
@@ -121,12 +131,23 @@ observeManyStreamT :: Monad m => Int -> StreamT m a -> m [a]
 observeManyStreamT i x | i <= 0 = return []
 observeManyStreamT i x = do x <- unStreamT x
                             case x of
-                               Done -> return []
+                               Done -> trace "Done" $ return []
                                Yield v k ->
-                                  fmap (\x -> v : x) $ observeManyStreamT (i - 1) k
-                               Delay k -> observeManyStreamT i k
+                                  trace "Yield" $ fmap (\x -> v : x) $ observeManyStreamT (i - 1) k
+                               Delay k -> trace "Delay" $ observeManyStreamT i k
+
+delayT :: Monad m => StreamT m a -> StreamT m a
+delayT s = StreamT $ return $ Delay $ s
 
    {-
 do xs <- observeAllStreamT x
                             return $ take i xs
 -}
+
+instance MonadTrans StreamT where
+    lift x = StreamT $ do x <- x
+                          return $ Yield x $ StreamT $ return $ Done
+
+instance MonadState s m => MonadState s (StreamT m) where
+    get = lift get
+    put x = lift $ put x

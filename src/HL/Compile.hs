@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 
 module HL.Compile where
 
@@ -26,9 +27,10 @@ type TacticK m v s = [Term v s] -> m [Term v s]
 -- Compile a program
 compile :: (Subst VarId (Term v VarId) s, Eq v,
             Monad m, MonadLogic m, MonadState s m, MonadPlus m, Pretty v)
-           => HLProg v VarId
+           => (forall a. m a -> m a)
+           -> HLProg v VarId
            -> Tactic m v VarId
-compile prg =
+compile delay prg =
     case progEntry prg `Map.lookup` progNames prg of
       Nothing ->
           impossible $ "compile: '" ++ progEntry prg ++ "' is not defined"
@@ -36,13 +38,16 @@ compile prg =
                   Nothing -> impossible $ "compile: invariant violation"
                   Just entry -> entry
     where
-      env = fmap (compileHl env) $ progFns prg
+      env = fmap (compileHl delay env) $ progFns prg
 
 -- Compile a tactic given the environment of defined tactics
 compileHl :: (Ord f, Eq v, Eq val, Show f, Pretty f, Show v, Subst v (Term val v) s,
               Monad m, MonadLogic m, MonadState s m, MonadPlus m, Pretty v, Pretty val)
-             => Map.Map f (Tactic m val v) -> HL val v f -> Tactic m val v
-compileHl _ (HLApply r) = \gl -> do
+             => (forall a. m a -> m a)
+             -> Map.Map f (Tactic m val v)
+             -> HL val v f
+             -> Tactic m val v
+compileHl _ _ (HLApply r) = \gl -> do
    s <- get
    let (l, s') = fresh (ruleVars r) s
    let v2u = varsToUVars (\y -> UVar (l !! fromIntegral y))
@@ -50,45 +55,46 @@ compileHl _ (HLApply r) = \gl -> do
    s'' <- fnUnify concl gl s'
    put s''
    sequence $ fmap (\a -> instantiate $ v2u a) (rulePrems r)
-compileHl env (HLCall name) =
+compileHl delay env (HLCall name) =
     case name `Map.lookup` env of
       Nothing -> impossible ("HLCall: " ++ show name ++ " undefined!")
-      Just tac -> tac
-compileHl _ HLFail = \_ -> mzero
-compileHl _ HLIdTac = \gl -> return [gl]
-compileHl env (HLOr lhs rhs) =
-   compileHl env (HLOnce $ HLPlus lhs rhs)
-compileHl env (HLPlus lhs rhs) =
-   let lhsT = compileHl env lhs in
-   let rhsT = compileHl env rhs in
+      Just tac -> \gl -> delay $ tac gl
+compileHl _ _ HLFail = \_ -> mzero
+compileHl _ _ HLIdTac = \gl -> return [gl]
+compileHl delay env (HLOr lhs rhs) =
+   compileHl delay env (HLOnce $ HLPlus lhs rhs)
+compileHl delay env (HLPlus lhs rhs) =
+   let lhsT = compileHl delay env lhs in
+   let rhsT = compileHl delay env rhs in
    \gl -> interleave (lhsT gl) (rhsT gl)
-compileHl env (HLOnce h) =
-   let lstT = compileHl env h in
+compileHl delay env (HLOnce h) =
+   let lstT = compileHl delay env h in
    \gl -> once $ lstT gl
-compileHl env (HLSeq lhs rhs) =
-   let lhsT = compileHl env lhs in
-   let rhsT = compileHc env rhs in
+compileHl delay env (HLSeq lhs rhs) =
+   let lhsT = compileHl delay env lhs in
+   let rhsT = compileHc delay env rhs in
    \gl -> lhsT gl >>- rhsT
-compileHl env (HLAssert _ hl) = compileHl env hl
-compileHl env (HLK hc) =
-   let hcT = compileHc env hc in
+compileHl delay env (HLAssert _ hl) = compileHl delay env hl
+compileHl delay env (HLK hc) =
+   let hcT = compileHc delay env hc in
    \gl -> hcT [gl]
 
 -- Compile a tactic continuation given the environment of defined tactics
 compileHc :: (Ord f, Eq v, Eq val, Show f, Pretty f, Show v, Subst v (Term val v) s,
               Monad m, MonadState s m, MonadPlus m, MonadLogic m, Pretty val, Pretty v)
-             => Map.Map f (Tactic m val v)
+             => (forall a. m a -> m a)
+             -> Map.Map f (Tactic m val v)
              -> HC val v f
              -> TacticK m val v
-compileHc env (HCAll hl) =
-    let hlT = compileHl env hl in
+compileHc delay env (HCAll hl) =
+    let hlT = compileHl delay env hl in
     foldM (\ acc gl ->
               let res = hlT gl in
               let final r = return (acc ++ r) in
               res >>- final)
           []
-compileHc env (HCEach hls) =
-    let hlsT = fmap (compileHl env) hls in
+compileHc delay env (HCEach hls) =
+    let hlsT = fmap (compileHl delay env) hls in
     \gls ->
         if length gls /= length hlsT
         then mzero
@@ -98,5 +104,5 @@ compileHc env (HCEach hls) =
                                   let final x = return $ acc ++ x in
                                   res t >>- final)
                 [] pairs
-compileHc _ HCIdTacK = \gls -> return gls
-compileHc _ HCFailK = \_ -> mzero
+compileHc _ _ HCIdTacK = \gls -> return gls
+compileHc _ _ HCFailK = \_ -> mzero

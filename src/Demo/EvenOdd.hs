@@ -73,6 +73,9 @@ custom t = case t of
       checkOdd (App 2 [t'']) = checkEven t''
       checkOdd _ = False
 
+evens n =
+    query (Just n) 1 evenOddTac $ mkEven $ UVar 0
+
 ----------------------------------------------------------------------
 -- Tests
 ----------------------------------------------------------------------

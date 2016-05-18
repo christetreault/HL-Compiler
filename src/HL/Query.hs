@@ -57,30 +57,37 @@ query :: (Eq v, Pretty v) -- TODO: what if user queries a term with no uvars?
          -> HLProg v VarId
          -> Term v VarId
          -> Query v
-query d n p t = case runIdentity $ observer d results of
+query d n p t = case results of
    [] -> QueryNo t
    xs -> QueryYes t xs
    where
       observer (Nothing) = observeAllStreamT
       observer (Just n') = observeManyStreamT n'
 
-      results = do
+      results :: [[(VarId, Term v VarId)]]
+      results = do -- list monad
          let (_, s) = fresh n (empty :: SubstEnv v VarId)
-         (_, env) <- runStateT (action p t) s
-         let vals = fmap
+         env <- execState (observer d $ action p t) s
+         return $ fmap
                     (\k -> (k, instantiateTerm (instFn env)
                                   (fromMaybe
                                   (impossible "lkup failure!")
                                   $ env `lkup` k)))
                     [0 .. n - 1]
-         return vals
          where
             instFn :: SubstEnv v VarId -> Integer -> Term v VarId
             instFn env i = fromMaybe (UVar i)
                            $ fmap (instantiateTerm $ instFn env) (env `lkup` i)
 
+{-
+-- This should have a standard definition...
+delayer :: StateT (SubstEnv v VarId) (StreamT Identity) a
+        -> StateT (SubstEnv v VarId) (StreamT Identity) a
+delayer x = StateT $ \ s -> delayT $ runStateT x s
+-}
+
 action :: (Eq v, Pretty v)
           => HLProg v VarId
           -> Term v VarId
-          -> StateT (SubstEnv v VarId) (StreamT Identity) [Term v VarId]
-action p t = compile p t
+          -> StreamT (State (SubstEnv v VarId)) [Term v VarId]
+action p t = compile delayT p t
