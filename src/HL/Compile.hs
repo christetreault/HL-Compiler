@@ -62,11 +62,11 @@ compileHl delay env (HLCall name) =
 compileHl _ _ HLFail = \_ -> mzero
 compileHl _ _ HLIdTac = \gl -> return [gl]
 compileHl delay env (HLOr lhs rhs) =
-   compileHl delay env (HLOnce $ HLPlus lhs rhs)
+    compileHl delay env (HLOnce $ HLPlus lhs rhs)
 compileHl delay env (HLPlus lhs rhs) =
    let lhsT = compileHl delay env lhs in
    let rhsT = compileHl delay env rhs in
-   \gl -> interleave (lhsT gl) (rhsT gl)
+   \gl -> (lhsT gl) `interleave` (rhsT gl)
 compileHl delay env (HLOnce h) =
    let lstT = compileHl delay env h in
    \gl -> once $ lstT gl

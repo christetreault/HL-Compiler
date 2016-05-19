@@ -177,4 +177,8 @@ makeProg fns entry = do
          return $ Map.fromList $ zip lhss rhss
 
 hlFirst :: [HL v a b] -> HL v a b
-hlFirst = mconcat
+hlFirst [] = HLFail
+hlFirst (x:xs) = HLOr x $ hlFirst xs
+
+hlAny :: [HL v a b] -> HL v a b
+hlAny = mconcat

@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Demo.EvenOdd where
 
@@ -13,19 +14,32 @@ import HL.Query
 import Criterion.Main
 import Test.Tasty
 import Test.Tasty.SmallCheck
+import Control.DeepSeq
+import Text.PrettyPrint.HughesPJClass
+import GHC.Generics
 
+data Symbol =
+      Even
+    | Odd
+    | S
+    | O
+    deriving (Show,Eq,Ord,Generic)
 
-mkEven t = App 0 [t]
-mkOdd t = App 1 [t]
-mkSucc t = App 2 [t]
-mkZero = App 3 []
+instance NFData Symbol
 
-mkN :: Integer -> Term Integer Integer
+instance Pretty Symbol where
+    pPrint = text . show
+
+mkEven t = App Even [t]
+mkOdd t = App Odd [t]
+mkSucc t = App S [t]
+mkZero = App O []
+
+mkN :: Integer -> Term Symbol Integer
 mkN n
-   | n >= 0 = case n of
-                 0 -> mkZero
-                 _ -> mkSucc $ mkN $ n - 1
-   | otherwise = impossible "n must be positive"
+    | n == 0 = mkZero
+    | n > 0 = mkSucc $ mkN $ n - 1
+    | otherwise = impossible "n must be positive"
 
 varZero = Var 0
 
@@ -44,11 +58,11 @@ ruleO = Rule { ruleVars = 0,
 evenOddTac = fromJust $ makeProg fnMap entryPoint
    where
       entryPoint = "evenOdd"
-      tacs = [HLApply ruleEO, HLApply ruleOE, HLApply ruleO]
+      tacs = [HLApply ruleEO, HLApply ruleOE,HLApply ruleO]
       fnMap = Map.fromList
                  [(entryPoint,
-                   HLSeq (hlFirst tacs)
-                         (HCAll $ HLCall entryPoint))]
+                   hlAny $ fmap (\ x -> HLSeq x (HCAll $ HLCall entryPoint))
+                           tacs)]
 
 evenOddTacOpt = fromJust $ makeProg fnMap entryPoint
    where
@@ -74,7 +88,7 @@ custom t = case t of
       checkOdd _ = False
 
 evens n =
-    query (Just n) 1 evenOddTac $ mkEven $ UVar 0
+    query (Just n) evenOddTac $ mkEven $ UVar 0
 
 ----------------------------------------------------------------------
 -- Tests

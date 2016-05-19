@@ -29,15 +29,9 @@ instance (Pretty b, Pretty a) => Show (Term b a) where
 instance (Pretty a, Pretty b) => Pretty (Term b a) where
    pPrint (UVar a) = parens (char '?' <> pPrint a)
    pPrint (Var i) = parens $ pPrint i
-   pPrint (App b []) = text "App"
-                       <+> (quotes (pPrint b))
-                       <+> lbrace
-                       <> rbrace
-   pPrint (App b ts) = text "App"
-                       <+> (quotes (pPrint b))
-                       <+> lbrace
-                       $$ (nest 1 (vcat $ fmap pPrint ts)
-                           $+$ rbrace)
+   pPrint (App b []) = pPrint b <+> lparen <> rparen
+   pPrint (App b ts) = pPrint b
+                       <+> parens (sep $ punctuate (text ",") $ fmap pPrint ts)
 
 data Rule b a =
    Rule { ruleVars :: VarId,
@@ -89,3 +83,8 @@ varsToUVars on (Var v) = on v
 varsToUVars _ _ = impossible "varsToUVars called on UVar"
 
 divideBar c = (text $ take 20 $ repeat c)
+
+maxUVar :: (r -> r -> r) -> (a -> r) -> Term v a -> r -> r
+maxUVar _ inj (UVar x) _ = inj x
+maxUVar _ _ (Var _) x = x
+maxUVar mx inj (App _ ls) x = foldl (\ a b -> maxUVar mx inj b a) x ls

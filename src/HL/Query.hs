@@ -19,11 +19,9 @@ data Query v =
 
 instance (Pretty v) => Pretty (Query v) where
    pPrint (QueryNo lhs) =
-      text "Unification failed for term:"
-      $$ (divideBar '-')
-      $$ pPrint lhs
+      text "No results"
    pPrint (QueryYes lhs rhss) =
-      text "Unification succeeded for term:"
+      text "Results:"
       $$ (divideBar '-')
       $$ pPrint lhs
       $$ (divideBar '=')
@@ -49,25 +47,33 @@ unifies p t = case result of
    QueryYes _ _ -> True
    _ -> False
    where
-      result = query Nothing 0 p t
+      result = query Nothing p t
 
 query :: (Eq v, Pretty v) -- TODO: what if user queries a term with no uvars?
          => Maybe Int
-         -> Integer
          -> HLProg v VarId
          -> Term v VarId
          -> Query v
-query d n p t = case results of
+query d p t = case results of
    [] -> QueryNo t
    xs -> QueryYes t xs
    where
-      observer (Nothing) = observeAllStreamT
-      observer (Just n') = observeManyStreamT n'
+      observer (Nothing) = observeAllStreamS
+      observer (Just n') = observeManyStreamS n'
 
-      results :: [[(VarId, Term v VarId)]]
+      n :: Integer
+      n = case maxUVar maybeMx Just t Nothing of
+            Nothing -> 0
+            Just n -> n + 1
+
+      maybeMx Nothing x = x
+      maybeMx x Nothing = x
+      maybeMx (Just a) (Just b) = Just $ max a b
+
+      -- results :: [[(VarId, Term v VarId)]]
       results = do -- list monad
          let (_, s) = fresh n (empty :: SubstEnv v VarId)
-         env <- execState (observer d $ action p t) s
+         (_,env) <- (observer d $ action p t) s
          return $ fmap
                     (\k -> (k, instantiateTerm (instFn env)
                                   (fromMaybe
@@ -89,5 +95,5 @@ delayer x = StateT $ \ s -> delayT $ runStateT x s
 action :: (Eq v, Pretty v)
           => HLProg v VarId
           -> Term v VarId
-          -> StreamT (State (SubstEnv v VarId)) [Term v VarId]
+          -> StreamS (SubstEnv v VarId) [Term v VarId]
 action p t = compile delayT p t
