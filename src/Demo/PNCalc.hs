@@ -97,7 +97,7 @@ basicBinAdd = fromJust $ makeProg fnMap entryPoint
               HLApply recPlus]
       fnMap = Map.fromList
               [(entryPoint,
-                hlFirst [ HLSeq x $ HCAll $ HLCall entryPoint | x <- tacs ])]
+                hlAny [ HLSeq x $ HCAll $ HLCall entryPoint | x <- tacs ])]
 
 ----------------------------------------------------------------------
 -- Tests
