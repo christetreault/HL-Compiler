@@ -48,13 +48,12 @@ mkType t = App t []
 mkApp e1 e2 = App "app" [e1, e2]
 mkVar n = App "var" [mkN n]
 mkArr a b = App "arr" [a, b]
-mkHasType e t = App ":" [e, t] ----- \
-mkTurnstile g t = App "|-" [g, t] -- + -- collapse into one ternary constructor
+--mkHasType e t = App ":" [e, t] ----- \
+mkHasType g e t = App "|- _ :" [g, e, t] -- + -- collapse into one ternary constructor
 
 mkFn :: [StringTerm] -> Integer -> StringTerm
 mkFn [] n = mkVar n
 mkFn (x:xs) n = mkAbs x (mkFn xs n)
-
 
 
 {-
@@ -90,49 +89,38 @@ nth Γ n τ
 
 -}
 
-basicTestTVar = mkNth (mkList [mkType "foo"]) mkZero (mkType "foo")
-
-
-
 ruleNthZero = [] ==> mkNth (mkCons (Var 1) (Var 0)) mkZero (Var 1)
 
 ruleNth = [mkNth (Var 0) (Var 1) (Var 2)]
           ==> mkNth (mkCons (Var 3) (Var 0)) (mkSucc (Var 1)) (Var 2)
 
 ruleTVar = [mkNth (Var 0) (Var 1) (Var 2)]
-           ==> mkTurnstile (Var 0) (mkHasType (Var 1) (Var 2))
+           ==> mkHasType (Var 0) (App "var" [(Var 1)]) (Var 2)
 
-ruleTApp = [mkTurnstile (Var 0) (mkHasType (Var 1) (mkArr (Var 2) (Var 3))),
-            mkTurnstile (Var 0) (mkHasType (Var 5) (Var 2))]
-           ==> mkTurnstile (Var 0) (mkHasType (mkApp (Var 1) (Var 5)) (Var 2))
+ruleTApp = [mkHasType (Var 0) (Var 1) (mkArr (Var 2) (Var 3)),
+            mkHasType (Var 0) (Var 5) (Var 2)]
+           ==> mkHasType (Var 0) (mkApp (Var 1) (Var 5)) (Var 2)
 
-ruleTAbs = [mkTurnstile (mkCons (Var 1) (Var 0)) (mkHasType (Var 2) (Var 3))]
-           ==> mkTurnstile (Var 0) (mkHasType (mkAbs (Var 1)
-                                                     (Var 2))
-                                              (mkArr (Var 1) (Var 3)))
+ruleTAbs = [mkHasType (mkCons (Var 1) (Var 0)) (Var 2) (Var 3)]
+           ==> mkHasType (Var 0) (mkAbs (Var 1) (Var 2))
+                                 (mkArr (Var 1) (Var 3))
 
-ruleGCons = [mkTurnstile (Var 0) (Var 1), (Var 3)]
-            ==> mkTurnstile (mkCons (Var 3) (Var 0)) (Var 4)
-
-typecheck = fromJust $ makeProg fnMap ep -- need to solve from bottom up,
-                                         -- not top down
+typecheck = fromJust $ makeProg fnMap ep
    where
       ep = "typechecks"
-      epDef = hlFirst [ HLSeq x
-                        $ HCAll
-                        $ HLCall ep | x <- cases ]
+      epDef = hlAny [ HLSeq x
+                      $ HCAll
+                      $ HLCall ep | x <- cases ]
       nth = "nth"
-      nthDef = HLSeq (hlFirst [HLApply ruleNth, HLApply ruleNthZero])
+      nthDef = HLSeq (hlAny [HLApply ruleNth, HLApply ruleNthZero])
                      (HCAll $ HLCall nth)
       tVar = "TVar"
-      tVarDef = HLSeq (HLCall nth)
-                      (HCAll $ HLApply ruleTVar)
+      tVarDef = HLSeq (HLApply ruleTVar)
+                      (HCAll $ HLCall nth)
       tApp = "TApp"
-      tAppDef = HLFail
+      tAppDef = (HLApply ruleTApp)
       tAbs = "TAbs"
-      tAbsDef = HLSeq (HLApply ruleGCons)
-                      (HCAll $ HLSeq (HLCall ep)
-                                     (HCAll $ HLApply ruleTVar))
+      tAbsDef = (HLApply ruleTAbs)
       cases = [ HLCall tVar,
                 HLCall tApp,
                 HLCall tAbs]
