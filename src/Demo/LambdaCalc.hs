@@ -98,8 +98,8 @@ ruleTVar = [mkNth (Var 0) (Var 1) (Var 2)]
            ==> mkHasType (Var 0) (App "var" [(Var 1)]) (Var 2)
 
 ruleTApp = [mkHasType (Var 0) (Var 1) (mkArr (Var 2) (Var 3)),
-            mkHasType (Var 0) (Var 5) (Var 2)]
-           ==> mkHasType (Var 0) (mkApp (Var 1) (Var 5)) (Var 2)
+            mkHasType (Var 0) (Var 4) (Var 2)]
+           ==> mkHasType (Var 0) (mkApp (Var 1) (Var 4)) (Var 3)
 
 ruleTAbs = [mkHasType (mkCons (Var 1) (Var 0)) (Var 2) (Var 3)]
            ==> mkHasType (Var 0) (mkAbs (Var 1) (Var 2))
@@ -131,6 +131,24 @@ typecheck = fromJust $ makeProg fnMap ep
                (tAbs, tAbsDef),
                (nth, nthDef)]
 
+-- add stuff: -- arithmetic operators?
+              -- polymorphism (a -> b) forall
+              {-
+
+G : * |- T : *
+-------------------- Tforall
+G |- forall *. t : *
+
+G |- f : forall x . t
+G |- f' : x : t'
+----------------------
+G |- f t' : t [ x |-> t']
+
+[stuff] is substitution
+
+see types and programming languages
+-}
+-- fill out test suite and bencmark suite
 
 ----------------------------------------------------------------------
 -- Haskell implementation
