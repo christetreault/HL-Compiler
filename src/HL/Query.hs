@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module HL.Query where
 
@@ -12,10 +13,15 @@ import Data.Maybe (fromMaybe)
 import Control.Monad.Logic
 import Control.Monad.Identity
 import HL.InterleavedTactic
+import Control.DeepSeq
+import GHC.Generics
 
 data Query v =
    QueryNo (Term v VarId)
    | QueryYes (Term v VarId) [[(VarId, Term v VarId)]]
+     deriving Generic
+
+instance NFData v => NFData (Query v)
 
 instance (Pretty v) => Pretty (Query v) where
    pPrint (QueryNo lhs) =

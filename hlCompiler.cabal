@@ -1,4 +1,4 @@
-name:                cse199
+name:                hlCompiler
 version:             0.1.0.0
 -- synopsis:
 -- description:
@@ -12,7 +12,7 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
-executable cse199
+executable hlCompiler
   main-is:             Main.hs
   other-modules:       HL
                      , HL.Compile

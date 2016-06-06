@@ -4,6 +4,7 @@ import Util
 import Term
 import Demo.Std
 import HL.Query
+import HL.Optimize
 import HL
 
 import Data.Maybe (fromJust)
@@ -48,8 +49,7 @@ mkType t = App t []
 mkApp e1 e2 = App "app" [e1, e2]
 mkVar n = App "var" [mkN n]
 mkArr a b = App "arr" [a, b]
---mkHasType e t = App ":" [e, t] ----- \
-mkHasType g e t = App "|- _ :" [g, e, t] -- + -- collapse into one ternary constructor
+mkHasType g e t = App "|- _ :" [g, e, t]
 
 mkFn :: [StringTerm] -> Integer -> StringTerm
 mkFn [] n = mkVar n
@@ -187,8 +187,42 @@ hsTypeCheck' _ _ = Error -- otherwise (I assume)
 -- Tests - TODO
 ----------------------------------------------------------------------
 
+testLHSTerm :: StringTerm
+testLHSTerm = mkFn [mkType "foo", mkType "bar"] 0
+
+testRHSTerm :: StringTerm
+testRHSTerm = mkArr (mkType "foo")
+                    (mkArr (mkType "bar")
+                           (mkType "bar"))
+
 lambdaCalcBenchSuite :: Benchmark
-lambdaCalcBenchSuite = todo "Write benchmark suite"
+lambdaCalcBenchSuite =
+   env (return $ (testLHSTerm, testRHSTerm, typecheck)) $
+   \ ~(l, r, p) -> bgroup "Simply Typed Lambda Calculus"
+                   [bench "Standard find LHS" $ nf (basicLHS p) r,
+                    bench "Standard find 20 LHS" $ nf (stressLHS p) r,
+                    bench "Standard find RHS" $ nf (basicRHS p) l,
+                    bench "Optimized find LHS"
+                       $ nf (basicLHS (normalizeProg p)) r,
+                    bench "Optimized find 20 LHS"
+                       $ nf (stressLHS (normalizeProg p)) r,
+                    bench "Optimized find RHS"
+                       $ nf (basicRHS (normalizeProg p)) l]
+
+
+   where
+      basicLHS p rhs = query (Just 1) p (mkHasType
+                                         mkNil
+                                         (UVar 0)
+                                         rhs)
+      stressLHS p rhs = query (Just 20) p (mkHasType
+                                           mkNil
+                                           (UVar 0)
+                                           rhs)
+      basicRHS p lhs = query (Just 1) p (mkHasType
+                                         mkNil
+                                         lhs
+                                         (UVar 0))
 
 lambdaCalcTestSuite :: TestTree
 lambdaCalcTestSuite = todo "Write test suite"

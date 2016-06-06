@@ -37,7 +37,9 @@ data Rule b a =
    Rule { ruleVars :: VarId,
           rulePrems :: [Term b a],
           ruleConcl :: Term b a}
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Generic)
+
+instance (NFData b, NFData a) => NFData (Rule b a)
 
 instance (Pretty b, Pretty a) => Show (Rule b a) where
    show = render . pPrint

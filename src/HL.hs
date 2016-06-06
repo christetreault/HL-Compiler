@@ -1,9 +1,13 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module HL where
 
 import Term
 import Util
 import qualified Data.Map as Map
 import Text.PrettyPrint.HughesPJClass
+import Control.DeepSeq
+import GHC.Generics
 
 -- | A high-level program continuation
 data HC v b a =
@@ -11,7 +15,9 @@ data HC v b a =
    | HCEach [HL v b a] -- ^ Zip a list of tactics with a list of subgoals
    | HCIdTacK -- ^ Identity; succeed and do nothing
    | HCFailK -- ^ Fail and do nothing
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Generic)
+
+instance (NFData v, NFData b, NFData a) => NFData (HC v b a)
 
 instance (Pretty v, Pretty b, Pretty a) => Show (HC v b a) where
    show = render . pPrint
@@ -30,7 +36,9 @@ data HL v b a =
                                  -- subgoals to be processed by the RHS HC
    | HLAssert (Term v b) (HL v b a) -- ^ Assertion (currently unused)
    | HLK (HC v b a) -- ^ Lift a continuation to a tactic
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Generic)
+
+instance (NFData v, NFData b, NFData a) => NFData (HL v b a)
 
 instance (Pretty v, Pretty b, Pretty a) => Show (HL v b a) where
    show = render . pPrint
@@ -135,6 +143,9 @@ data HLProg v a =
             progNames :: Map.Map String Integer,
             progFns :: Map.Map Integer (HL v a Integer)
           }
+   deriving (Generic)
+
+instance (NFData v, NFData a) => NFData (HLProg v a)
 
 instance (Pretty v, Pretty a) => Show (HLProg v a) where
    show = render . pPrint
