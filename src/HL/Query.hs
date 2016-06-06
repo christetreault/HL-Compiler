@@ -10,6 +10,8 @@ import Control.Monad.State
 import Text.PrettyPrint.HughesPJClass hiding (empty)
 import Data.Maybe (fromMaybe)
 import Control.Monad.Logic
+import Control.Monad.Identity
+import HL.InterleavedTactic
 
 data Query v =
    QueryNo (Term v VarId)
@@ -17,11 +19,9 @@ data Query v =
 
 instance (Pretty v) => Pretty (Query v) where
    pPrint (QueryNo lhs) =
-      text "Unification failed for term:"
-      $$ (divideBar '-')
-      $$ pPrint lhs
+      text "No results"
    pPrint (QueryYes lhs rhss) =
-      text "Unification succeeded for term:"
+      text "Results:"
       $$ (divideBar '-')
       $$ pPrint lhs
       $$ (divideBar '=')
@@ -47,37 +47,53 @@ unifies p t = case result of
    QueryYes _ _ -> True
    _ -> False
    where
-      result = query Nothing 0 p t
+      result = query Nothing p t
 
-query :: (Eq v, Pretty v)
+query :: (Eq v, Pretty v) -- TODO: what if user queries a term with no uvars?
          => Maybe Int
-         -> Integer
          -> HLProg v VarId
          -> Term v VarId
          -> Query v
-query d n p t = case (observer d) results of
+query d p t = case results of
    [] -> QueryNo t
    xs -> QueryYes t xs
    where
-      observer (Nothing) = observeAll
-      observer (Just n') = observeMany n'
-      results = do
+      observer (Nothing) = observeAllStreamS
+      observer (Just n') = observeManyStreamS n'
+
+      n :: Integer
+      n = case maxUVar maybeMx Just t Nothing of
+            Nothing -> 0
+            Just n -> n + 1
+
+      maybeMx Nothing x = x
+      maybeMx x Nothing = x
+      maybeMx (Just a) (Just b) = Just $ max a b
+
+      -- results :: [[(VarId, Term v VarId)]]
+      results = do -- list monad
          let (_, s) = fresh n (empty :: SubstEnv v VarId)
-         (_, env) <- runStateT (action p t) s
-         let vals = fmap
+         (_,env) <- (observer d $ action p t) s
+         return $ fmap
                     (\k -> (k, instantiateTerm (instFn env)
                                   (fromMaybe
                                   (impossible "lkup failure!")
                                   $ env `lkup` k)))
                     [0 .. n - 1]
-         return vals
          where
             instFn :: SubstEnv v VarId -> Integer -> Term v VarId
             instFn env i = fromMaybe (UVar i)
                            $ fmap (instantiateTerm $ instFn env) (env `lkup` i)
 
+{-
+-- This should have a standard definition...
+delayer :: StateT (SubstEnv v VarId) (StreamT Identity) a
+        -> StateT (SubstEnv v VarId) (StreamT Identity) a
+delayer x = StateT $ \ s -> delayT $ runStateT x s
+-}
+
 action :: (Eq v, Pretty v)
           => HLProg v VarId
           -> Term v VarId
-          -> StateT (SubstEnv v VarId) Logic [Term v VarId]
-action p t = compile p t
+          -> StreamS (SubstEnv v VarId) [Term v VarId]
+action p t = compile delayT p t
