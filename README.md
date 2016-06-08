@@ -19,7 +19,9 @@ Testing
 
 To run the test suite, simply execute:
 
-`$ cabal test`
+```
+$ cabal test
+```
 
 This will invoke the test suite which will test our three demo modules.
 
@@ -31,3 +33,5 @@ To run the benchmark suite, simply execute:
 $ cabal install
 $ cabal exec hlCompiler
 ```
+
+This will perform stress tests of our demo modules.
