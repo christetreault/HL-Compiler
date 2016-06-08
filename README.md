@@ -27,6 +27,7 @@ Benchmarking
 ------------
 
 To run the benchmark suite, simply execute:
-
-`$ cabal install`
-`$ cabal exec hlCompiler`
+```
+$ cabal install
+$ cabal exec hlCompiler
+```
