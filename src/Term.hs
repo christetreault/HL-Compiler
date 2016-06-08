@@ -84,8 +84,6 @@ varsToUVars on (App f xs) = App f $ fmap (varsToUVars on) xs
 varsToUVars on (Var v) = on v
 varsToUVars _ _ = impossible "varsToUVars called on UVar"
 
-divideBar c = (text $ take 20 $ repeat c)
-
 maxUVar :: (r -> r -> r) -> (a -> r) -> Term v a -> r -> r
 maxUVar _ inj (UVar x) _ = inj x
 maxUVar _ _ (Var _) x = x

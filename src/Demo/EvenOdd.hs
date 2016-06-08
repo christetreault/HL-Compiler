@@ -8,7 +8,6 @@ import HL
 import Term
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
-import Control.Monad.State
 import HL.Optimize
 import HL.Query
 import Criterion.Main
@@ -97,7 +96,7 @@ evens n =
 
 evenOddBenchSuite :: Benchmark
 evenOddBenchSuite =
-   env (return $ mkEven $ mkN (10000 :: Integer)) $
+   env (return $ mkEven $ mkN (1000 :: Integer)) $
    \ ~(t) -> bgroup "Even-Odd"
              [bench "Standard" $ nf (evenOddTac `unifies`) t,
               bench "Manual" $ nf (evenOddTacOpt `unifies`) t,

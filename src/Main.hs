@@ -7,6 +7,6 @@ import Criterion.Main
 
 main :: IO ()
 main = do
-   defaultMain [--evenOddBenchSuite,
+   defaultMain [evenOddBenchSuite,
                 pnCalcBenchSuite,
                 lambdaCalcBenchSuite]

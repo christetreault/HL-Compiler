@@ -1,6 +1,5 @@
 module Demo.LambdaCalc where
 
-import Util
 import Term
 import Demo.Std
 import HL.Query
@@ -12,8 +11,6 @@ import Test.Tasty
 import Test.Tasty.SmallCheck
 import Test.Tasty.HUnit
 import Criterion.Main
-import Debug.Trace
-import Text.PrettyPrint.HughesPJClass
 import qualified Data.Map as Map
 
 
@@ -133,8 +130,8 @@ typecheck = fromJust $ makeProg fnMap ep
                (tAbs, tAbsDef),
                (nth, nthDef)]
 
--- add stuff: -- arithmetic operators?
-              -- polymorphism (a -> b) forall
+-- TODO: -- arithmetic operators?
+         -- polymorphism (a -> b) forall
               {-
 
 G : * |- T : *
@@ -146,11 +143,8 @@ G |- f' : x : t'
 ----------------------
 G |- f t' : t [ x |-> t']
 
-[stuff] is substitution
-
-see types and programming languages
 -}
--- fill out test suite and bencmark suite
+
 
 ----------------------------------------------------------------------
 -- Haskell implementation
@@ -214,8 +208,6 @@ lambdaCalcBenchSuite =
                        $ nf (stressLHS (normalizeProg p)) r,
                     bench "Optimized find RHS"
                        $ nf (basicRHS (normalizeProg p)) l]
-
-
    where
       basicLHS p rhs = query (Just 1) p (mkHasType
                                          mkNil

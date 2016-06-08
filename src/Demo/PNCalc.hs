@@ -5,7 +5,6 @@ module Demo.PNCalc where
 import HL
 import HL.Optimize
 import HL.Query
-import Control.Monad.State
 import Term
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
@@ -41,7 +40,6 @@ isCons l r = App CTCons [l, r]
 isNil = App CTNil []
 isChar d = App (CTChar d) []
 isRecThen x z =  App CTRecThen [x, z]
-
 
 recN n = Rule { ruleVars = 1,
                 rulePrems = [],

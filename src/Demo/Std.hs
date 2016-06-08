@@ -39,14 +39,15 @@ mkList (x:xs) = mkCons x $ mkList xs
 
 mkNth xs n x = App "nth" [xs, n, x]
 
+-- | Construct a rule; calculates the number of Vars in the rule automatically
 infixl 5 =>>
 prems =>> concl = Rule { ruleVars = (countVars prems concl),
                          rulePrems = prems,
                          ruleConcl = concl }
-
-countVars :: [StringTerm] -> StringTerm -> Integer
-countVars p c = toInteger $ length $ nub $ concat $ fmap getVars (c:p)
    where
-      getVars (UVar _) = impossible "UVar in call to countVars!"
-      getVars (App _ ts) = concat $ fmap getVars ts
-      getVars v = [v]
+      countVars :: [StringTerm] -> StringTerm -> Integer
+      countVars p c = toInteger $ length $ nub $ concat $ fmap getVars (c:p)
+         where
+            getVars (UVar _) = impossible "UVar in call to countVars!"
+            getVars (App _ ts) = concat $ fmap getVars ts
+            getVars v = [v]

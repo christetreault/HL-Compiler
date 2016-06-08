@@ -165,8 +165,6 @@ instance (Pretty v, Pretty a) => Pretty (HLProg v a) where
                      i
                      (progFns hl)
 
-
-
 makeProg :: Map.Map String (Tac v t)
             -> String
             -> Maybe (HLProg v t)
