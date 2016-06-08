@@ -16,6 +16,10 @@ import HL.InterleavedTactic
 import Control.DeepSeq
 import GHC.Generics
 
+numSolns :: Query v -> Int
+numSolns (QueryNo _) = 0
+numSolns (QueryYes _ rhss) = length rhss
+
 data Query v =
    QueryNo (Term v VarId)
    | QueryYes (Term v VarId) [[(VarId, Term v VarId)]]
@@ -24,7 +28,7 @@ data Query v =
 instance NFData v => NFData (Query v)
 
 instance (Pretty v) => Pretty (Query v) where
-   pPrint (QueryNo lhs) =
+   pPrint (QueryNo _) =
       text "No results"
    pPrint (QueryYes lhs rhss) =
       text "Results:"

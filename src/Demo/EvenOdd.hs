@@ -37,8 +37,9 @@ mkZero = App O []
 
 mkN :: Integer -> Term Symbol Integer
 mkN n
-    | n == 0 = mkZero
-    | n > 0 = mkSucc $ mkN $ n - 1
+    | n >= 0 = case n of
+                  0 -> mkZero
+                  _ -> mkSucc $ mkN $ n - 1
     | otherwise = impossible "n must be positive"
 
 varZero = Var 0

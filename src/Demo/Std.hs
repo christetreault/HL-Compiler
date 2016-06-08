@@ -39,8 +39,8 @@ mkList (x:xs) = mkCons x $ mkList xs
 
 mkNth xs n x = App "nth" [xs, n, x]
 
-infixl 5 ==>
-prems ==> concl = Rule { ruleVars = (countVars prems concl),
+infixl 5 =>>
+prems =>> concl = Rule { ruleVars = (countVars prems concl),
                          rulePrems = prems,
                          ruleConcl = concl }
 

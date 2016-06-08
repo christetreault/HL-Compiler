@@ -9,6 +9,8 @@ import HL
 
 import Data.Maybe (fromJust)
 import Test.Tasty
+import Test.Tasty.SmallCheck
+import Test.Tasty.HUnit
 import Criterion.Main
 import Debug.Trace
 import Text.PrettyPrint.HughesPJClass
@@ -89,20 +91,20 @@ nth Γ n τ
 
 -}
 
-ruleNthZero = [] ==> mkNth (mkCons (Var 1) (Var 0)) mkZero (Var 1)
+ruleNthZero = [] =>> mkNth (mkCons (Var 1) (Var 0)) mkZero (Var 1)
 
 ruleNth = [mkNth (Var 0) (Var 1) (Var 2)]
-          ==> mkNth (mkCons (Var 3) (Var 0)) (mkSucc (Var 1)) (Var 2)
+          =>> mkNth (mkCons (Var 3) (Var 0)) (mkSucc (Var 1)) (Var 2)
 
 ruleTVar = [mkNth (Var 0) (Var 1) (Var 2)]
-           ==> mkHasType (Var 0) (App "var" [(Var 1)]) (Var 2)
+           =>> mkHasType (Var 0) (App "var" [(Var 1)]) (Var 2)
 
 ruleTApp = [mkHasType (Var 0) (Var 1) (mkArr (Var 2) (Var 3)),
             mkHasType (Var 0) (Var 4) (Var 2)]
-           ==> mkHasType (Var 0) (mkApp (Var 1) (Var 4)) (Var 3)
+           =>> mkHasType (Var 0) (mkApp (Var 1) (Var 4)) (Var 3)
 
 ruleTAbs = [mkHasType (mkCons (Var 1) (Var 0)) (Var 2) (Var 3)]
-           ==> mkHasType (Var 0) (mkAbs (Var 1) (Var 2))
+           =>> mkHasType (Var 0) (mkAbs (Var 1) (Var 2))
                                  (mkArr (Var 1) (Var 3))
 
 typecheck = fromJust $ makeProg fnMap ep
@@ -194,6 +196,10 @@ testRHSTerm :: StringTerm
 testRHSTerm = mkArr (mkType "foo")
                     (mkArr (mkType "bar")
                            (mkType "bar"))
+badRHSTerm :: StringTerm
+badRHSTerm = mkArr (mkType "cats")
+                   (mkArr (mkType "dogs")
+                          (mkType "Bool"))
 
 lambdaCalcBenchSuite :: Benchmark
 lambdaCalcBenchSuite =
@@ -225,4 +231,38 @@ lambdaCalcBenchSuite =
                                          (UVar 0))
 
 lambdaCalcTestSuite :: TestTree
-lambdaCalcTestSuite = todo "Write test suite"
+lambdaCalcTestSuite = testGroup "Simply Typed Lambda Calculus"
+                      [testCase "lhs :: rhs typechecks" lhsUnifiesRhs,
+                       testCase "?(0) :: rhs typechecks" varUnifiesRhs,
+                       testCase "lhs :: ?(0) typechecks" lhsUnifiesVar,
+                       testCase "lhs :: badRHS does not typecheck"
+                          catsAndDogsLivingTogether,
+                       testProperty "∀n numSolns (query n |- [] : ?(0) t) = n"
+                          infiniteSolns]
+   where
+      lhsUnifiesRhs = typecheck `unifies` (mkHasType
+                                              mkNil
+                                              testLHSTerm
+                                              testRHSTerm) @?= True
+      varUnifiesRhs = typecheck `unifies` (mkHasType
+                                              mkNil
+                                              (UVar 0)
+                                              testRHSTerm) @?= True
+      lhsUnifiesVar = typecheck `unifies` (mkHasType
+                                              mkNil
+                                              testLHSTerm
+                                              (UVar 0)) @?= True
+      catsAndDogsLivingTogether = typecheck `unifies`
+                                            (mkHasType
+                                                mkNil
+                                                testLHSTerm
+                                                badRHSTerm) @?= False
+      infiniteSolns :: Integer -> Property IO
+      infiniteSolns a = (>= (0 :: Integer))
+                        ==> \n -> numSolns (query
+                                               (Just n)
+                                               typecheck
+                                               (mkHasType
+                                                   mkNil
+                                                   (UVar 0)
+                                                   testRHSTerm)) == n
