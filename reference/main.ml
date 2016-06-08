@@ -1,5 +1,12 @@
 open Core.Std
-(**)
+
+(*
+   This OCaml program is a very early version of the project originally written
+   by Gregory. When Chris joined the project, the first order of business was to
+   port this to Haskell. This version is preserved here in order to refernce
+   back to it if need be.
+ *)
+
 type empty
 
 type 'a term =
@@ -9,33 +16,32 @@ type 'a term =
 and var = int
 and ref_self = Cyc of ref_self term option ref
 with sexp, compare
-(**)
 
-(**)
+
+
 let vars_to_uvars (type t) (type u) (on : int -> t term) =
   let rec vars_to_uvars : u term -> t term = function
       App (f,xs) -> App (f, Array.map ~f:vars_to_uvars xs)
     | Var v -> on v
     | UVar _ -> assert false
   in vars_to_uvars
-(**)
 
-(**)
+
+
 let rec instantiate_term (lookup : 'a -> 'a term) = function
     App (f,xs) -> App (f, Array.map ~f:(instantiate_term lookup) xs)
   | Var v -> Var v
   | UVar u -> lookup u
 
-(**)
 type 'a rule =
   { vars : int
   ; prems : 'a term list
   ; concl : 'a term
   }
 with sexp, compare
-(**)
 
-(**)
+
+
 module type SUBST =
 sig
   type key
@@ -45,8 +51,8 @@ sig
   val lookup : subst -> key -> key term option
   val inst : key -> key term -> subst -> subst option
 end
-(**)
-(**)
+
+
 module MapSubst : SUBST with type key = int =
 struct
   type key = int
@@ -61,7 +67,7 @@ struct
     with
     | Failure _ -> None
 end
-(**)
+
 module RefSubst : SUBST with type key = ref_self =
 struct
   type key = ref_self
@@ -84,7 +90,7 @@ struct
 
   exception UnifyFailure
 
-  (**)
+
   let rec fn_unify (cmp : 'a -> 'a -> int) (a : 'a term) (b : 'a term) (s : Subst.subst) : Subst.subst =
     match a , b with
     | App(f,xs) , App (g,ys) when f = g && Array.length xs = Array.length ys ->
@@ -99,9 +105,9 @@ struct
         | Some s -> s
       end
     | _ , _ -> raise UnifyFailure
-  (**)
 
-  (**)
+
+
   module SubstMonad =
   struct
     type 'a t = Subst.subst -> 'a * Subst.subst
@@ -115,57 +121,57 @@ struct
   include With_Subst
 
   type 'a with_subst = 'a SubstMonad.t
-  (**)
 
-  (*!*)
+
+
   let fresh num : uvar array with_subst =
     fun s -> Subst.fresh num s
-  (*!*)
 
-  (*!*)
+
+
   let inst (u : uvar) (t : uvar term) : bool with_subst =
     fun s ->
       match Subst.inst u t s with
       | None -> false , s
       | Some ss -> true , ss
-  (*!*)
 
-  (**)
+
+
   let get : Subst.subst with_subst =
     fun x -> (x, x)
   let put (s : Subst.subst) : unit with_subst =
     fun _ -> ((), s)
-  (**)
 
-  (**)
+
+
   let unify (a : uvar term) (b : uvar term) : bool with_subst =
     With_Subst.(get >>= fun sub ->
                 try put (fn_unify compare a b sub) >>| (fun _ -> true)
                 with UnifyFailure -> return false)
-  (**)
-  (**)
+
+
   let instantiate (a : uvar term) : uvar term with_subst =
     With_Subst.(get >>= fun sub ->
                 return (instantiate_term (fun u -> match Subst.lookup sub u with
                     | None -> UVar u
                     | Some t -> t) a))
-  (**)
 
-  (**)
+
+
   let run_subst (type t) (tac : t with_subst) =
     fst (tac Subst.empty)
-  (**)
 
-  (**)
+
+
   let rec bind_all (k : uvar term -> uvar term list option with_subst) (acc : uvar term list) =
     function
     | [] -> With_Subst.return (Some [])
     | gl :: gls ->
       With_Subst.(k gl >>= function None -> return None
                                   | Some xs -> bind_all k (acc @ xs) gls)
-  (**)
 
-  (**)
+
+
   let bind_each (type t)
   : (t term -> t term list option with_subst) list -> t term list ->
     t term list -> t term list option with_subst =
@@ -180,12 +186,12 @@ struct
                           function None -> return None
                                  | Some ls -> fix (ls @ acc) gls
     in bind_each
-         (**)
+
 end
 
 module HL =
   struct
-    (**)
+
   type ('a,'b) hl =
     | APPLY of 'b rule
     | CALL of 'a
@@ -201,8 +207,7 @@ module HL =
     | IDTACK
     | FAILK
   with sexp, compare
-  (**)
-  (**)
+
   let map_hl (type v) (type t) (type u) (f : t -> u) : (t,v) hl -> (u,v) hl =
     let rec map_hl =
       function OR (l,r) -> OR (map_hl l, map_hl r)
@@ -219,7 +224,7 @@ module HL =
              | IDTACK -> IDTACK
              | FAILK -> FAILK
     in map_hl
-  (**)
+
   type 'a tac = (string, 'a) hl
   type 'a tacC = (string, 'a) hc
 
