@@ -3,7 +3,7 @@ version:             0.1.0.0
 -- synopsis:
 -- description:
 license:             MIT
-license-file:        LICENSE
+license-file:        License.md
 author:              Gregory Malecha, Chris Tetreault
 maintainer:          gmalecha@cs.ucsd.edu, ctetreau@ucsd.edu
 -- copyright:
