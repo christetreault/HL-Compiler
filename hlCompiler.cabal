@@ -24,7 +24,7 @@ executable hlCompiler
                      , Demo.EvenOdd
                      , Demo.PNCalc
   -- other-extensions:
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base >=4.8 && < 4.10
                      , mtl >= 2.2 && < 2.3
                      , containers >= 0.5.6 && < 0.5.8
                      , pretty >= 1.1 && < 1.2
@@ -52,7 +52,7 @@ test-suite test
                      , Util
                      , Demo.EvenOdd
                      , Demo.PNCalc
-  build-depends:    base >=4.8 && <4.9
+  build-depends:    base >=4.8 && < 4.10
                   , mtl >= 2.2 && < 2.3
                   , containers >= 0.5.6 && < 0.5.8
                   , pretty >= 1.1 && < 1.2
